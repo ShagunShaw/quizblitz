@@ -16,18 +16,6 @@ const userSchema= new mongoose.Schema({
             token: String
         }
     ],
-    quizes: [
-        {
-            quizId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Quiz"
-            }, 
-            isAttempted: {
-                enum: [true, false],
-                default: false
-            }
-        }
-    ]
 }, {timestamps: true})
 
 export const User= mongoose.model("User", userSchema)
