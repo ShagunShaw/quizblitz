@@ -2,7 +2,7 @@ import express, { Router } from "express";
 import axios from 'axios'
 import { User } from "../schemas/user.schema.ts";
 import { generateAccessToken, generateRefreshToken, verifyAccessToken } from "../auth/generateAndVerifyToken.ts";
-import { logOutUser } from "../controllers/user.controller.ts";
+import { sendEmail, logOutUser, acceptEmail } from "../controllers/user.controller.ts";
 const router: Router= express.Router()
 
 router.get('auth/google', (req, res) => {
@@ -66,5 +66,9 @@ router.get('auth/google/callback', async (req, res) => {
 })
 
 router.post('user/logout/', verifyAccessToken, logOutUser)
+
+router.post('/co-host/:quizId', verifyAccessToken, sendEmail)     // send email to the co-host to accept the invite
+
+router.post('/co-host/accept' jdbj)    // This route will be called by frontend
 
 export default router;

@@ -8,11 +8,11 @@ const quizSchema = new mongoose.Schema({
             index: true         // This will help us to quickly locate our user to which this quiz belong for a given user
         }
     ],
-    UniqueId: {
+    roomCode: {
         type: String,
         lowercase: true,
-        // minlength: 6,
-        // maxlength: 6,
+        minlength: 6,
+        maxlength: 6,
         required: true,
         unique: true
     },
