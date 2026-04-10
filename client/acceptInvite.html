@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QuizBlitz — Accepting Invite</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .card {
+      text-align: center;
+      padding: 48px 40px;
+      background: #1e293b;
+      border-radius: 16px;
+      max-width: 420px;
+      width: 90%;
+    }
+
+    .logo {
+      font-size: 28px;
+      font-weight: bold;
+      color: #60a5fa;
+      margin-bottom: 4px;
+    }
+
+    .tagline {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 32px;
+    }
+
+    .message {
+      font-size: 16px;
+      color: #e2e8f0;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .progress-bar-bg {
+      background: #334155;
+      border-radius: 999px;
+      height: 6px;
+      width: 100%;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #60a5fa;
+      border-radius: 999px;
+      transition: width 0.1s linear;
+    }
+
+    .countdown {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p class="logo">QuizBlitz</p>
+    <p class="tagline">quiz hosting, made simple</p>
+
+    <p class="message">
+      You've been invited to co-host a quiz!<br/>
+      Setting up your account, hang tight...
+    </p>
+
+    <div class="progress-bar-bg">
+      <div class="progress-bar" id="bar"></div>
+    </div>
+
+    <p class="countdown" id="countdown">Redirecting in 5 seconds...</p>
+  </div>
+
+  <script>
+    const BACKEND_INVITE_URL = `http://localhost:3000/co-host/accept`;
+    const TOTAL = 5000;
+    const INTERVAL = 100;
+    let elapsed = 0;
+
+    const bar = document.getElementById('bar');
+    const countdown = document.getElementById('countdown');
+
+    const token = new URLSearchParams(window.location.search).get('token');
+
+    const timer = setInterval(() => {
+      elapsed += INTERVAL;
+      const percent = Math.min((elapsed / TOTAL) * 100, 100);
+      bar.style.width = percent + '%';
+
+      const secondsLeft = Math.ceil((TOTAL - elapsed) / 1000);
+      countdown.textContent = `Redirecting in ${secondsLeft} second${secondsLeft !== 1 ? 's' : ''}...`;
+
+      if (elapsed >= TOTAL) {
+        clearInterval(timer);
+        window.location.href = `${BACKEND_INVITE_URL}/${token}`;
+      }
+    }, INTERVAL);
+  </script>
+</body>
+</html>
