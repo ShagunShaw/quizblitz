@@ -43,6 +43,9 @@ const quizSchema = new mongoose.Schema({
     isPermanent: {
         type: Boolean,
         default: false
+    },
+    startTime: {
+        kgjhfjhfhf
     }
 }, { timestamps: true })
 

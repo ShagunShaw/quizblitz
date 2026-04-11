@@ -1,11 +1,9 @@
 import express from 'express'
 import cors from 'cors'
 import 'dotenv/config';
-import axios from 'axios';
 import cookieParser  from 'cookie-parser'
-import { generateAccessToken, generateRefreshToken } from "./auth/generateAndVerifyToken.ts"
-import { User } from './schemas/user.schema.ts';
 import UserRouter from './routes/user.route.ts'
+import QuizRouter from './routes/quiz.routes.ts'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -14,6 +12,7 @@ app.use(cors())
 app.use(express.json())
 app.use(cookieParser())
 app.use("/", UserRouter)
+app.use("/quiz", QuizRouter)
 
 app.use((err, req, res, next) => {          // This is for error handling
   console.log(err, req, res, next)

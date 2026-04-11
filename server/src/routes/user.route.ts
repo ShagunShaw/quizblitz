@@ -10,10 +10,10 @@ router.get('auth/google/callback', googleCallback)
 
 router.post('user/logout/', verifyAccessToken, logOutUser)
 
-router.post('/co-host/:quizId', verifyAccessToken, sendEmail)     // send email to the co-host to accept the invite
+router.post('co-host/:quizId', verifyAccessToken, sendEmail)     // send email to the co-host to accept the invite
 
-router.post('/co-host/accept/:token', acceptEmail)    // This route will be called by frontend
+router.post('co-host/accept/:token', acceptEmail)    // This route will be called by frontend
 
-router.post('/co-host/accept/callback', acceptCallback)
+router.post('co-host/accept/callback', acceptCallback)
 
 export default router;

@@ -93,7 +93,7 @@ export const sendEmail = async (req, res) => {
         const user = await User.findById(req.user.userId)
 
         const { coHostEmail } = req.body
-        const coHost = await User.find({ email: coHostEmail })
+        const coHost = await User.findOne({ email: coHostEmail })
 
         const subject = "You've been invited to co-host a quiz on QuizBlitz!"
 
@@ -106,8 +106,12 @@ export const sendEmail = async (req, res) => {
             sendNewUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
         }
         else {
-            if(await quiz.findOne({ Hosts: coHost._id }))       // fix this to check if this co-host is already a cohost of the given quiz id or not
-            
+            const alreadyHost = quiz.Hosts.some((id) => id.equals(coHost._id));
+
+            if (alreadyHost) {
+                return res.status(400).send("This user is already a co-host for this quiz");
+            }
+
             sendExistingUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
         }
 
@@ -190,7 +194,7 @@ export const acceptCallback = async (req, res) => {
         res.cookie('refreshToken', refreshToken)
 
         res.status(200)
-           .redirect('http://localhost:5500/quizDashboard.html')     
+            .redirect('http://localhost:5500/quizDashboard.html')
     } catch (err) {
         console.error('Co-Host OAuth Error:', err);
         res.send('Co-Host adding failed');
