@@ -3,9 +3,15 @@ import mongoose from 'mongoose'
 const quizSchema = new mongoose.Schema({
     Hosts: [
         {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            index: true         // This will help us to quickly locate our user to which this quiz belong for a given user
+            userId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "User",
+                index: true         // this will help to quickly locate to this field 
+            },
+            role: {
+                type: String,
+                enum: ['owner', 'cohost']
+            }
         }
     ],
     roomCode: {
@@ -45,7 +51,8 @@ const quizSchema = new mongoose.Schema({
         default: false
     },
     startTime: {
-        kgjhfjhfhf
+        type: Date,
+        required: true
     }
 }, { timestamps: true })
 

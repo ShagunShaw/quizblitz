@@ -106,7 +106,7 @@ export const sendEmail = async (req, res) => {
             sendNewUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
         }
         else {
-            const alreadyHost = quiz.Hosts.some((id) => id.equals(coHost._id));
+            const alreadyHost = quiz.Hosts.some((id) => id.userId.equals(coHost._id));
 
             if (alreadyHost) {
                 return res.status(400).send("This user is already a co-host for this quiz");
@@ -180,7 +180,7 @@ export const acceptCallback = async (req, res) => {
         )
 
         const quiz = await Quiz.findById(payload.quizId)
-        quiz.Hosts.push(user._id)
+        quiz.Hosts.push({userId: user._id, role: 'cohost'})
         await quiz.save()
 
         const sessionId = Date.now() + Math.random()
