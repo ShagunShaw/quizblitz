@@ -82,6 +82,18 @@ export const removeQuizById = async (req, res) => {
     }
 }
 
+export const updateQuizById = async (req, res) => {
+    const { quizId } = req.params
+    const details = req.body
+
+    if (details.Hosts || details.roomCode || details.Questions || details.TotalPoints || details.QuestionsCount || details.isAttempted) res.status(400).send("You cannot update these fields under this route")
+
+    const response = await Quiz.findByIdAndUpdate(quizId, details, { new: true })
+    if (!response) return res.status(404).send(`QuizId ${quizId} not found!`)
+
+    res.status(200).json({ message: "Fields Updated successfullt", data: response })
+}
+
 export const addQuestions = async (req, res) => {
     try {
         const { quizId } = req.params

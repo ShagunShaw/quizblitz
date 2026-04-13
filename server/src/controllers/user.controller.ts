@@ -65,6 +65,17 @@ export const googleCallback = async (req, res) => {
     }
 }
 
+export const getUser = async (req, res) => {
+    try {
+        const payload= req.user
+        const user= await User.findById(payload.userId)
+
+        res.status(200).json({message: "User fetched successfully!", data: user})
+    } catch (error) {
+        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+    }
+}
+
 export const logOutUser = async (req, res) => {
     try {
         const payload = req.user;
@@ -180,7 +191,7 @@ export const acceptCallback = async (req, res) => {
         )
 
         const quiz = await Quiz.findById(payload.quizId)
-        quiz.Hosts.push({userId: user._id, role: 'cohost'})
+        quiz.Hosts.push({ userId: user._id, role: 'cohost' })
         await quiz.save()
 
         const sessionId = Date.now() + Math.random()
@@ -198,5 +209,48 @@ export const acceptCallback = async (req, res) => {
     } catch (err) {
         console.error('Co-Host OAuth Error:', err);
         res.send('Co-Host adding failed');
+    }
+}
+
+export const removeCoHost = async (req, res) => {
+    try {
+        const { quizId } = req.params
+        const { coHostId } = req.body
+        const payload = req.user
+
+        const quiz = await Quiz.findById(quizId)
+        if (!quiz) res.status(404).send(`QuizId ${quizId} not found!`)
+
+        const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
+        if (!val) return res.status(401).send("You are not a host of this quiz")
+        if (val.role !== 'owner') res.status(401).send("You are not authorised to remove any co-host from this quiz")
+
+        (quiz.Hosts as any).pull({ userId: coHostId })
+        await quiz.save()
+
+        res.status(200).json({ message: "Co-Host removed successfully", data: [] })
+    } catch (error) {
+        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+    }
+}
+
+export const leaveQuiz = async (req, res) => {
+    try {
+        const payload = req.user
+        const { quizId } = req.params
+
+        const quiz = await Quiz.findById(quizId)
+        if (!quiz) res.status(404).send(`QuizId ${quizId} not found!`)
+
+        const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
+        if (!val) return res.status(401).send("You are not a host of this quiz")
+        if (val.role === 'owner') res.status(401).send("You cannot leave this quiz as you are the owner here. Delete this quiz instead!")
+
+            (quiz.Hosts as any).pull({ userId: payload.userId })
+        await quiz.save()
+
+        res.status(200).json({ message: `Co-host ${payload.userId} has left the quiz successfully!`, data: [] })
+    } catch (error) {
+        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
