@@ -27,7 +27,7 @@ const questionSchema = new mongoose.Schema({
         type: Number,
         validate: {
         validator: function(val: number) {
-            return val > 0 && val <= this.options.length
+            return val >= 0 && val < this.options.length
         },
         message: 'correctOption must be a valid option index'
     }
