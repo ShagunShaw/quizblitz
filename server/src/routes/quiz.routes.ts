@@ -23,7 +23,7 @@ router.patch('/questions/:quidId', updateQuestions)
 
 // load all questions for the ATTEMPT QUIZ part  --> I think it's already done in the 'router.get('/:quizId', getQuidById)' part, just see how the frontend requests for it and then will optimize it later
 
-router.get('/attemptQuiz/:roomCode')         // TO BE DONE (also remove the 'verifyAccessToken' middleware from this route, and at the end of the controller of this route, dont forget to set 'isAttempted' from the quiz schema to 'true')
+// router.get('/attemptQuiz/:roomCode')         // TO BE DONE (also remove the 'verifyAccessToken' middleware from this route, and at the end of the controller of this route, dont forget to set 'isAttempted' from the quiz schema to 'true')
 
 
 export default router;
