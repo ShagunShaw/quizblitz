@@ -1,17 +1,17 @@
 import express, { Router } from "express";
 import { verifyAccessToken } from "../auth/generateAndVerifyToken.ts";
-import { addQuiz, getAllQuiz, getQuidById, removeQuizById, addQuestions, removeQuestions, updateQuestions, updateQuizById } from "../controllers/quiz.controller.ts";
+import { addQuiz, getAllQuiz, getQuizById, removeQuizById, addQuestions, removeQuestions, updateQuestions, updateQuizById } from "../controllers/quiz.controller.ts";
 
 const router: Router= express.Router()
 router.use(verifyAccessToken)
 
-router.post('/', addQuiz)            // For adding a quiz
+router.post('/', addQuiz)            // For adding a quiz               
 
 router.get('/', getAllQuiz)
 
-router.get('/:quizId', getQuidById)
+router.get('/:quizId', getQuizById)
 
-router.delete('/:quizId', removeQuizById)
+router.delete('/:quizId', removeQuizById)           // also remove questions from question schema as well
 
 router.patch('/:quizId', updateQuizById)
 
@@ -19,7 +19,7 @@ router.post('/questions/:quizId', addQuestions)
 
 router.delete('/questions/:quizId', removeQuestions)
 
-router.patch('/questions/:quidId', updateQuestions)
+router.patch('/questions/:quizId', updateQuestions)
 
 // load all questions for the ATTEMPT QUIZ part  --> I think it's already done in the 'router.get('/:quizId', getQuidById)' part, just see how the frontend requests for it and then will optimize it later
 

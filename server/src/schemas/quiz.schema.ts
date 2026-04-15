@@ -17,8 +17,8 @@ const quizSchema = new mongoose.Schema({
     roomCode: {
         type: String,
         lowercase: true,
-        minlength: 6,
-        maxlength: 6,
+        minlength: 8,
+        maxlength: 8,
         required: true,
         unique: true
     },
@@ -60,7 +60,7 @@ interface IQuestion {
     point: number
 }
 
-quizSchema.pre('save', async function (next: mongoose.CallbackWithoutResultAndOptionalError) {
+quizSchema.pre('save', async function () {
     if (this.isModified('Questions')) {
         this.QuestionsCount = this.Questions.length;
 
@@ -74,7 +74,6 @@ quizSchema.pre('save', async function (next: mongoose.CallbackWithoutResultAndOp
         }
         this.TotalPoints = points
     }
-    next()
 })
 
 export const Quiz = mongoose.model("Quiz", quizSchema)

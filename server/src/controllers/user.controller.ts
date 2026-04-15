@@ -6,19 +6,19 @@ import axios from 'axios'
 import { generateAccessToken, generateRefreshToken } from "../auth/generateAndVerifyToken.ts";
 
 export const googleRedirect = (req, res) => {
-    const redirectUri = 'http://localhost:3000/auth/google/callback';
+    const redirectUri = 'http://localhost:3000/api/v1/auth/google/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
 
-    console.log("Response from /auth/google\n", url)
+    // console.log("Response from /auth/google\n", url)
 
     res.redirect(url);
 }
 
 export const googleCallback = async (req, res) => {
     const code = req.query.code;
-    const redirectUri = 'http://localhost:3000/auth/google/callback';
+    const redirectUri = 'http://localhost:3000/api/v1/auth/google/callback';
 
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
@@ -46,7 +46,7 @@ export const googleCallback = async (req, res) => {
         const user = await User.findOneAndUpdate(
             { email: profileRes.data.email },
             { $setOnInsert: { username: profileRes.data.name, email: profileRes.data.email } },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         )
 
         const sessionId = Date.now() + Math.random()
@@ -139,7 +139,7 @@ export const acceptEmail = async (req, res) => {
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${token}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;          // 'state=${token}' is where we are passing our token to be extracted in the callback route using 'req.query.state'
 
-    console.log("Response from /co-host/accept/:token\n", url)
+    // console.log("Response from /co-host/accept/:token\n", url)
 
     res.redirect(url);
 }

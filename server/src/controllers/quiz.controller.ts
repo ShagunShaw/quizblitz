@@ -13,16 +13,20 @@ export const addQuiz = async (req, res) => {
             res.status(400).send("Description length should be 150 at max.")
         }
 
+        if (new Date() > new Date(startTime)) {
+            return res.status(400).send("The given time has already passed")
+        }
+
         const quiz = await Quiz.create({
             Hosts: [{ userId: userId, role: 'owner' }],
             roomCode: code,
             Title: title,
             Description: description,
-            isPermanent: isPermanent || false,
+            isPermanent: isPermanent || false,              // Remember: Boolean("false") is also true, so send false as Boolean only and not as String
             startTime: new Date(startTime)
         })
 
-        res.status(201)
+        return res.status(201)
             .json({ message: "Quiz created succesfully!", data: quiz })
     } catch (error) {
         res.status(500).json({ errorCode: error.code, errorMessage: error.message })
@@ -33,7 +37,7 @@ export const getAllQuiz = async (req, res) => {
     try {
         const payload = req.user
 
-        const quizes = await Quiz.find({ 'Hosts.userId': payload.userId }).select("roomCode, Title, Description, TotalPoints, QuestionsCount, startTime")
+        const quizes = await Quiz.find({ 'Hosts.userId': payload.userId }).select("roomCode Title Description TotalPoints QuestionsCount startTime")
 
         res.status(200)
             .json({ message: "Quizes fetched successfully", data: quizes })
@@ -42,13 +46,13 @@ export const getAllQuiz = async (req, res) => {
     }
 }
 
-export const getQuidById = async (req, res) => {
+export const getQuizById = async (req, res) => {
     try {
         const { userId } = req.user;
         const { quizId } = req.params;
 
         const quiz = await Quiz.findById(quizId).populate('Questions')
-        if (!quiz.Hosts.includes(userId)) {
+        if (!quiz.Hosts.some(host => host.userId.toString() === userId.toString())) {
             res.status(401)
                 .json({ errorCode: 401, errorMessage: "You are not authorised to access this quiz!!" })
         }
@@ -68,12 +72,16 @@ export const removeQuizById = async (req, res) => {
         const response = await Quiz.findOneAndDelete({
             _id: quizId,
             'Hosts.userId': userId
-        })
+        }).select("Questions")
 
         if (!response) {
             return res.status(401)
                 .json({ errorCode: 401, errorMessage: "You are not authorised to delete this quiz!!" })
         }
+
+        const ques = await Question.deleteMany({
+            _id: { $in: response.Questions }
+        })
 
         res.status(200)
             .json({ message: "Quiz deleted successfully", data: response })
@@ -97,7 +105,7 @@ export const updateQuizById = async (req, res) => {
 export const addQuestions = async (req, res) => {
     try {
         const { quizId } = req.params
-        const questions = req.body
+        const { questions } = req.body
 
         const quiz = await Quiz.findById(quizId)
         if (!quiz) res.status(404).send(`QuizId ${quizId} not found!`)
@@ -137,7 +145,7 @@ export const addQuestions = async (req, res) => {
 export const removeQuestions = async (req, res) => {
     try {
         const { quizId } = req.params
-        const questionIds = req.body             // should be an array only, from the frontend
+        const { questionIds } = req.body             // should be an array only, from the frontend
 
         const quiz = await Quiz.findById(quizId)
         if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
@@ -156,10 +164,10 @@ export const removeQuestions = async (req, res) => {
 
 export const updateQuestions = async (req, res) => {
     const { quizId } = req.params
-    const questions = req.body
+    const { questions } = req.body          // We also need to pass each question's (to be updated) _id from the frontend to update the value
 
     const quiz = await Quiz.findById(quizId)
-    if (!quiz) res.status(404).send(`QuizId ${quizId} not found!`)
+    if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
 
     for (let i = 0; i < questions.length; i++) {
         const { point, time, question, options, correctOption } = questions[i]
@@ -173,8 +181,21 @@ export const updateQuestions = async (req, res) => {
 
     // Parallel Processing
     const results = await Promise.all(questions.map(q =>
-        Question.findByIdAndUpdate(q._id, q, { new: true })
+        Question.findByIdAndUpdate(q._id, q, { returnDocument: 'after' })
     ))
 
-    res.status(200).json({ message: "Fields updated successfully!", data: results })
+    const allQuestions = await Question.find({
+        _id: { $in: quiz.Questions }
+    }).lean()
+
+    let total = 0
+    for (let q of allQuestions) {
+        total += q.point
+    }
+
+    await Quiz.findByIdAndUpdate(quizId, {
+        TotalPoints: total
+    })
+
+    return res.status(200).json({ message: "Fields updated successfully!", data: results })
 }

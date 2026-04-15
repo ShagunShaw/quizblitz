@@ -25,7 +25,7 @@ export const generateRefreshToken = (userId) => {
 
 export const verifyAccessToken = (req, res, next) => {
     const token = req.headers['authorization'].split(' ')[1] || req.cookies.accessToken;
-    console.log("Token: ", token);
+    // console.log("Token: ", token);
   
     if (!token) {
       return res.status(401).send("You must be logged in to access this route");
