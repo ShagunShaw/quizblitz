@@ -13,7 +13,7 @@ export const googleRedirect = (req, res) => {
 
     // console.log("Response from /auth/google\n", url)
 
-    res.redirect(url);
+    return res.redirect(url);
 }
 
 export const googleCallback = async (req, res) => {
@@ -56,23 +56,23 @@ export const googleCallback = async (req, res) => {
         user.refreshTokens.push({ sessionId, token: refreshToken })
         await user.save()
 
-        res.cookie('accessToken', accessToken)
-        res.cookie('refreshToken', refreshToken)
-        res.redirect('http://localhost:5500/client/success.html');
+        return res.cookie('accessToken', accessToken)
+            .cookie('refreshToken', refreshToken)
+            .redirect('http://localhost:5500/client/success.html');
     } catch (err) {
         console.error('Google OAuth Error:', err);
-        res.send('Google login failed');
+        return res.send('Google login failed');
     }
 }
 
 export const getUser = async (req, res) => {
     try {
-        const payload= req.user
-        const user= await User.findById(payload.userId)
+        const payload = req.user
+        const user = await User.findById(payload.userId)
 
-        res.status(200).json({message: "User fetched successfully!", data: user})
+        return res.status(200).json({ message: "User fetched successfully!", data: user })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -84,11 +84,11 @@ export const logOutUser = async (req, res) => {
         user.refreshTokens.pull({ sessionId: payload.sessionId })
         await user.save()
 
-        res.clearCookie('accessToken')
-        res.clearCookie('refreshToken')
-        res.status(200).send("User logged out successfully").redirect("http://localhost:5500/client/logout.html")
+        return res.clearCookie('accessToken')
+            .clearCookie('refreshToken')
+            .status(200).send("User logged out successfully").redirect("http://localhost:5500/client/logout.html")
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -98,7 +98,7 @@ export const sendEmail = async (req, res) => {
 
         const quiz = await Quiz.findById(quizId)
         if (quiz.Hosts.length === 3) {
-            res.status(400).send("Not more than 3 hosts can be there for a quiz")
+            return res.status(400).send("Not more than 3 hosts can be there for a quiz")
         }
 
         const user = await User.findById(req.user.userId)
@@ -126,22 +126,20 @@ export const sendEmail = async (req, res) => {
             sendExistingUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
         }
 
-        res.status(200).send("Email sent successfully!")
+        return res.status(200).send("Email sent successfully!")
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
 export const acceptEmail = async (req, res) => {
-    const redirectUri = 'http://localhost:3000/co-host/accept/callback';
+    const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const { token } = req.params
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${token}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;          // 'state=${token}' is where we are passing our token to be extracted in the callback route using 'req.query.state'
 
-    // console.log("Response from /co-host/accept/:token\n", url)
-
-    res.redirect(url);
+    return res.redirect(url);
 }
 
 
@@ -153,8 +151,8 @@ interface IInvitePayload {
 
 export const acceptCallback = async (req, res) => {
     const code = req.query.code;
-    const token = req.query.state;
-    const redirectUri = 'http://localhost:3000/co-host/accept/callback';
+    const token = req.query.state
+    const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
 
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
@@ -181,7 +179,7 @@ export const acceptCallback = async (req, res) => {
 
         const payload = jwt.verify(token, process.env.COHOST_TOKEN_SECRET) as IInvitePayload
         if (payload.coHostEmail !== profileRes.data.email) {
-            res.status(400).send("You must login with the email to which the invite has been sent!!")
+            return res.status(400).send("You must login with the email to which the invite has been sent!!")
         }
 
         const user = await User.findOneAndUpdate(
@@ -201,14 +199,13 @@ export const acceptCallback = async (req, res) => {
         user.refreshTokens.push({ sessionId, token: refreshToken })
         await user.save()
 
-        res.cookie('accessToken', accessToken)
-        res.cookie('refreshToken', refreshToken)
-
-        res.status(200)
-            .redirect('http://localhost:5500/quizDashboard.html')
+        return res.cookie('accessToken', accessToken)
+            .cookie('refreshToken', refreshToken)
+            .status(200)
+            .redirect('http://localhost:5500/client/quizDashboard.html')
     } catch (err) {
         console.error('Co-Host OAuth Error:', err);
-        res.send('Co-Host adding failed');
+        return res.send('Co-Host adding failed');
     }
 }
 
@@ -219,18 +216,21 @@ export const removeCoHost = async (req, res) => {
         const payload = req.user
 
         const quiz = await Quiz.findById(quizId)
-        if (!quiz) res.status(404).send(`QuizId ${quizId} not found!`)
+        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
 
         const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
         if (!val) return res.status(401).send("You are not a host of this quiz")
-        if (val.role !== 'owner') res.status(401).send("You are not authorised to remove any co-host from this quiz")
+        if (val.role !== 'owner') return res.status(401).send("You are not authorised to remove any co-host from this quiz")
 
-        (quiz.Hosts as any).pull({ userId: coHostId })
-        await quiz.save()
+        await Quiz.findByIdAndUpdate(
+            quizId,
+            { $pull: { Hosts: { userId: coHostId } } },
+            { new: true }
+        )
 
-        res.status(200).json({ message: "Co-Host removed successfully", data: [] })
+        return res.status(200).json({ message: "Co-Host removed successfully", data: [] })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -240,17 +240,20 @@ export const leaveQuiz = async (req, res) => {
         const { quizId } = req.params
 
         const quiz = await Quiz.findById(quizId)
-        if (!quiz) res.status(404).send(`QuizId ${quizId} not found!`)
+        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
 
         const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
         if (!val) return res.status(401).send("You are not a host of this quiz")
-        if (val.role === 'owner') res.status(401).send("You cannot leave this quiz as you are the owner here. Delete this quiz instead!")
+        if (val.role === 'owner') return res.status(401).send("You cannot leave this quiz as you are the owner here. Delete this quiz instead!")
 
-            (quiz.Hosts as any).pull({ userId: payload.userId })
-        await quiz.save()
+        await Quiz.findByIdAndUpdate(
+            quizId,
+            { $pull: { Hosts: { userId: payload.userId } } },
+            { new: true }
+        )
 
-        res.status(200).json({ message: `Co-host ${payload.userId} has left the quiz successfully!`, data: [] })
+        return res.status(200).json({ message: `Co-host ${payload.userId} has left the quiz successfully!`, data: [] })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }

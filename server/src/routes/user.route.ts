@@ -15,9 +15,9 @@ router.post('/logout/', verifyAccessToken, logOutUser)
 
 router.post('/co-host/:quizId', verifyAccessToken, sendEmail)     // send email to the co-host to accept the invite
 
-router.post('/co-host/accept/:token', acceptEmail)    // This route will be called by frontend
+router.get('/accept/:token', acceptEmail)    // This route will be called by frontend
 
-router.post('/co-host/accept/callback', acceptCallback)
+router.get('/co-host/accept/callback', acceptCallback)
 
 router.delete('/:quizId/co-host', verifyAccessToken, removeCoHost)
 

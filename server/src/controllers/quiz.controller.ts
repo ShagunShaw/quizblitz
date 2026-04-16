@@ -10,7 +10,7 @@ export const addQuiz = async (req, res) => {
         const { title, description, isPermanent, startTime } = req.body
 
         if (description && description.length > 150) {
-            res.status(400).send("Description length should be 150 at max.")
+            return res.status(400).send("Description length should be 150 at max.")
         }
 
         if (new Date() > new Date(startTime)) {
@@ -27,9 +27,9 @@ export const addQuiz = async (req, res) => {
         })
 
         return res.status(201)
-            .json({ message: "Quiz created succesfully!", data: quiz })
+                  .json({ message: "Quiz created succesfully!", data: quiz })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -39,10 +39,10 @@ export const getAllQuiz = async (req, res) => {
 
         const quizes = await Quiz.find({ 'Hosts.userId': payload.userId }).select("roomCode Title Description TotalPoints QuestionsCount startTime")
 
-        res.status(200)
+        return res.status(200)
             .json({ message: "Quizes fetched successfully", data: quizes })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -53,14 +53,14 @@ export const getQuizById = async (req, res) => {
 
         const quiz = await Quiz.findById(quizId).populate('Questions')
         if (!quiz.Hosts.some(host => host.userId.toString() === userId.toString())) {
-            res.status(401)
-                .json({ errorCode: 401, errorMessage: "You are not authorised to access this quiz!!" })
+            return res.status(401)
+                      .json({ errorCode: 401, errorMessage: "You are not authorised to access this quiz!!" })
         }
 
-        res.status(200)
-            .json({ message: "Quiz fetched successfully", data: quiz })
+        return res.status(200)
+                  .json({ message: "Quiz fetched successfully", data: quiz })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -83,10 +83,10 @@ export const removeQuizById = async (req, res) => {
             _id: { $in: response.Questions }
         })
 
-        res.status(200)
-            .json({ message: "Quiz deleted successfully", data: response })
+        return res.status(200)
+                  .json({ message: "Quiz deleted successfully", data: response })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -99,7 +99,7 @@ export const updateQuizById = async (req, res) => {
     const response = await Quiz.findByIdAndUpdate(quizId, details, { new: true })
     if (!response) return res.status(404).send(`QuizId ${quizId} not found!`)
 
-    res.status(200).json({ message: "Fields Updated successfullt", data: response })
+    return res.status(200).json({ message: "Fields Updated successfullt", data: response })
 }
 
 export const addQuestions = async (req, res) => {
@@ -108,7 +108,7 @@ export const addQuestions = async (req, res) => {
         const { questions } = req.body
 
         const quiz = await Quiz.findById(quizId)
-        if (!quiz) res.status(404).send(`QuizId ${quizId} not found!`)
+        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
 
         for (let i = 0; i < questions.length; i++) {
             const { point, time, question, options, correctOption } = questions[i]
@@ -136,9 +136,9 @@ export const addQuestions = async (req, res) => {
 
         await quiz.save()
 
-        res.status(201).json({ message: "Questions added successfully", data })
+        return res.status(201).json({ message: "Questions added successfully", data })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -156,9 +156,9 @@ export const removeQuestions = async (req, res) => {
         (quiz.Questions as any).pull(...questionIds)
         await quiz.save()
 
-        res.status(200).json({ message: "Questions removed successfully", data: response })
+        return res.status(200).json({ message: "Questions removed successfully", data: response })
     } catch (error) {
-        res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 

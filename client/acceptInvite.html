@@ -1,11 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="x-dns-prefetch-control" content="off" />
   <title>QuizBlitz — Accepting Invite</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: Arial, sans-serif;
@@ -69,13 +76,14 @@
     }
   </style>
 </head>
+
 <body>
   <div class="card">
     <p class="logo">QuizBlitz</p>
     <p class="tagline">quiz hosting, made simple</p>
 
     <p class="message">
-      You've been invited to co-host a quiz!<br/>
+      You've been invited to co-host a quiz!<br />
       Setting up your account, hang tight...
     </p>
 
@@ -87,7 +95,7 @@
   </div>
 
   <script>
-    const BACKEND_INVITE_URL = `http://localhost:3000/co-host/accept`;
+    const BACKEND_INVITE_URL = `http://localhost:3000/api/v1/accept`;
     const TOTAL = 5000;
     const INTERVAL = 100;
     let elapsed = 0;
@@ -96,6 +104,7 @@
     const countdown = document.getElementById('countdown');
 
     const token = new URLSearchParams(window.location.search).get('token');
+    let redirected = false; // ← outside, persists across ticks
 
     const timer = setInterval(() => {
       elapsed += INTERVAL;
@@ -105,11 +114,13 @@
       const secondsLeft = Math.ceil((TOTAL - elapsed) / 1000);
       countdown.textContent = `Redirecting in ${secondsLeft} second${secondsLeft !== 1 ? 's' : ''}...`;
 
-      if (elapsed >= TOTAL) {
+      if (elapsed >= TOTAL && !redirected) {
+        redirected = true;
         clearInterval(timer);
-        window.location.href = `${BACKEND_INVITE_URL}/${token}`;
+        window.location.replace(`${BACKEND_INVITE_URL}/${token}`);
       }
     }, INTERVAL);
   </script>
 </body>
+
 </html>
