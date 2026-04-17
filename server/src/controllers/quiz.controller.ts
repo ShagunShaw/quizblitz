@@ -1,7 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Quiz } from "../schemas/quiz.schema.ts";
-import { User } from '../schemas/user.schema.ts';
 import { Question } from '../schemas/question.schema.ts';
+
+import { getIO } from '../socket.ts';
+const io = getIO()
+
 
 export const addQuiz = async (req, res) => {
     try {
@@ -27,7 +30,7 @@ export const addQuiz = async (req, res) => {
         })
 
         return res.status(201)
-                  .json({ message: "Quiz created succesfully!", data: quiz })
+            .json({ message: "Quiz created succesfully!", data: quiz })
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -54,11 +57,15 @@ export const getQuizById = async (req, res) => {
         const quiz = await Quiz.findById(quizId).populate('Questions')
         if (!quiz.Hosts.some(host => host.userId.toString() === userId.toString())) {
             return res.status(401)
-                      .json({ errorCode: 401, errorMessage: "You are not authorised to access this quiz!!" })
+                .json({ errorCode: 401, errorMessage: "You are not authorised to access this quiz!!" })
         }
 
+        const isOwner = quiz.Hosts.some(h =>            // for frontend to decide whether to give control to publish quiz or not
+            h.userId.toString() === userId && h.role === 'owner'
+        )
+
         return res.status(200)
-                  .json({ message: "Quiz fetched successfully", data: quiz })
+            .json({ message: "Quiz fetched successfully", data: {quiz, isOwner} })
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -84,7 +91,7 @@ export const removeQuizById = async (req, res) => {
         })
 
         return res.status(200)
-                  .json({ message: "Quiz deleted successfully", data: response })
+            .json({ message: "Quiz deleted successfully", data: response })
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -198,4 +205,20 @@ export const updateQuestions = async (req, res) => {
     })
 
     return res.status(200).json({ message: "Fields updated successfully!", data: results })
+}
+
+export const getQuizByRoomCode = async (req, res) => {
+    try {
+        const { roomCode } = req.params
+
+        const quiz = await Quiz.findOne({ roomCode: roomCode })
+            .select("Hosts roomCode Title Description TotalPoints QuestionsCount startTime")
+            .populate("Hosts")
+
+        if (!quiz) return res.status(404).json({ errorCode: 404, errorMessage: "No room with this room code found!" })
+
+        return res.status(200).json({ message: "Quiz meta-data fetched successfully!" })
+    } catch (error) {
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+    }
 }
