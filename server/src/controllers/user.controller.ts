@@ -61,7 +61,7 @@ export const googleCallback = async (req, res) => {
             .redirect('http://localhost:5500/client/success.html');
     } catch (err) {
         console.error('Google OAuth Error:', err);
-        return res.send('Google login failed');
+        return res.status(500).json({errorMessage: err.message, errorCode: err.Code})
     }
 }
 
@@ -86,7 +86,7 @@ export const logOutUser = async (req, res) => {
 
         return res.clearCookie('accessToken')
             .clearCookie('refreshToken')
-            .status(200).send("User logged out successfully").redirect("http://localhost:5500/client/logout.html")
+            .status(200).json({message: "User logged out successfully", data: []}).redirect("http://localhost:5500/client/logout.html")
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -98,7 +98,7 @@ export const sendEmail = async (req, res) => {
 
         const quiz = await Quiz.findById(quizId)
         if (quiz.Hosts.length === 3) {
-            return res.status(400).send("Not more than 3 hosts can be there for a quiz")
+            return res.status(400).json({errorMessage: "Not more than 3 hosts can be there for a quiz", errorCode: 400})
         }
 
         const user = await User.findById(req.user.userId)
@@ -120,13 +120,13 @@ export const sendEmail = async (req, res) => {
             const alreadyHost = quiz.Hosts.some((id) => id.userId.equals(coHost._id));
 
             if (alreadyHost) {
-                return res.status(400).send("This user is already a co-host for this quiz");
+                return res.status(400).json({errorMessage: "This user is already a co-host for this quiz", errorCode: 400})
             }
 
             sendExistingUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
         }
 
-        return res.status(200).send("Email sent successfully!")
+        return res.status(200).json({message: "Email sent successfully!", data: []})
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -179,7 +179,7 @@ export const acceptCallback = async (req, res) => {
 
         const payload = jwt.verify(token, process.env.COHOST_TOKEN_SECRET) as IInvitePayload
         if (payload.coHostEmail !== profileRes.data.email) {
-            return res.status(400).send("You must login with the email to which the invite has been sent!!")
+            return res.status(400).json({errorMessage: "You must login with the email to which the invite has been sent!!", errorCode: 400})
         }
 
         const user = await User.findOneAndUpdate(
@@ -203,9 +203,9 @@ export const acceptCallback = async (req, res) => {
             .cookie('refreshToken', refreshToken)
             .status(200)
             .redirect('http://localhost:5500/client/quizDashboard.html')
-    } catch (err) {
-        console.error('Co-Host OAuth Error:', err);
-        return res.send('Co-Host adding failed');
+    } catch (error) {
+        console.error('Co-Host OAuth Error:', error);
+        return res.json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
@@ -216,11 +216,11 @@ export const removeCoHost = async (req, res) => {
         const payload = req.user
 
         const quiz = await Quiz.findById(quizId)
-        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
+        if (!quiz) return res.status(404).json({errorMessage: `QuizId not found!`, errorCode: 404})
 
         const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
-        if (!val) return res.status(401).send("You are not a host of this quiz")
-        if (val.role !== 'owner') return res.status(401).send("You are not authorised to remove any co-host from this quiz")
+        if (!val) return res.status(401).json({errorMessage: "You are not a host of this quiz", errorCode: 401})
+        if (val.role !== 'owner') return res.status(401).json({errorMessage: "You are not authorised to remove any co-host from this quiz", errorCode: 401})
 
         await Quiz.findByIdAndUpdate(
             quizId,
@@ -240,11 +240,11 @@ export const leaveQuiz = async (req, res) => {
         const { quizId } = req.params
 
         const quiz = await Quiz.findById(quizId)
-        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
+        if (!quiz) return res.status(404).json({errorMessage: `QuizId not found!`, errorCode: 404})
 
         const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
-        if (!val) return res.status(401).send("You are not a host of this quiz")
-        if (val.role === 'owner') return res.status(401).send("You cannot leave this quiz as you are the owner here. Delete this quiz instead!")
+        if (!val) return res.status(401).json({errorMessage: "You are not a host of this quiz", errorCode: 401})
+        if (val.role === 'owner') return res.status(401).json({errorMessage: "You cannot leave this quiz as you are the owner here. Delete this quiz instead!", errorCode: 401})
 
         await Quiz.findByIdAndUpdate(
             quizId,
@@ -252,7 +252,7 @@ export const leaveQuiz = async (req, res) => {
             { new: true }
         )
 
-        return res.status(200).json({ message: `Co-host ${payload.userId} has left the quiz successfully!`, data: [] })
+        return res.status(200).json({ message: `Co-host has left the quiz successfully!`, data: [] })
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
