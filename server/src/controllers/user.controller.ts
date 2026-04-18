@@ -68,7 +68,7 @@ export const googleCallback = async (req, res) => {
 export const getUser = async (req, res) => {
     try {
         const payload = req.user
-        const user = await User.findById(payload.userId)
+        const user = await User.findById(payload.userId).select("-refreshTokens -createdAt -updatedAt")
 
         return res.status(200).json({ message: "User fetched successfully!", data: user })
     } catch (error) {
@@ -97,9 +97,14 @@ export const sendEmail = async (req, res) => {
         const { quizId } = req.params
 
         const quiz = await Quiz.findById(quizId)
+        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
         if (quiz.Hosts.length === 3) {
             return res.status(400).json({errorMessage: "Not more than 3 hosts can be there for a quiz", errorCode: 400})
         }
+
+        const val = quiz.Hosts.find(h => h.userId.toString() === req.user.userId.toString())
+        if (!val) return res.status(401).send("You are not a host of this quiz")
+        if (val.role !== 'owner') return res.status(401).send("You are not authorised to add any co-host to this quiz")
 
         const user = await User.findById(req.user.userId)
 
