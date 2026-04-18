@@ -10,11 +10,11 @@ export const addQuiz = async (req, res) => {
         const { title, description, isPermanent, startTime } = req.body
 
         if (description && description.length > 150) {
-            return res.status(400).send("Description length should be 150 at max.")
+            return res.status(400).json({ errorMessage: "Description length should be 150 at max.", errorCode: 400 })
         }
 
         if (new Date() > new Date(startTime)) {
-            return res.status(400).send("The given time has already passed")
+            return res.status(400).json({ errorMessage: "The given time has already passed", errorCode: 400 })
         }
 
         const quiz = await Quiz.create({
@@ -27,7 +27,7 @@ export const addQuiz = async (req, res) => {
         })
 
         return res.status(201)
-                  .json({ message: "Quiz created succesfully!", data: quiz })
+            .json({ message: "Quiz created succesfully!", data: quiz })
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -52,13 +52,15 @@ export const getQuizById = async (req, res) => {
         const { quizId } = req.params;
 
         const quiz = await Quiz.findById(quizId).populate('Questions')
+        if (!quiz) return res.status(404).json({ errorMessage: "QuizId not found!", errorCode: 404 })
+            
         if (!quiz.Hosts.some(host => host.userId.toString() === userId.toString())) {
             return res.status(401)
-                      .json({ errorCode: 401, errorMessage: "You are not authorised to access this quiz!!" })
+                .json({ errorCode: 401, errorMessage: "You are not authorised to access this quiz!!" })
         }
 
         return res.status(200)
-                  .json({ message: "Quiz fetched successfully", data: quiz })
+            .json({ message: "Quiz fetched successfully", data: quiz })
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -84,22 +86,33 @@ export const removeQuizById = async (req, res) => {
         })
 
         return res.status(200)
-                  .json({ message: "Quiz deleted successfully", data: response })
+            .json({ message: "Quiz deleted successfully", data: response })
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
 }
 
 export const updateQuizById = async (req, res) => {
-    const { quizId } = req.params
-    const details = req.body
+    try {
+        const { quizId } = req.params
+        const details = req.body
+        const payload = req.user
 
-    if (details.Hosts || details.roomCode || details.Questions || details.TotalPoints || details.QuestionsCount || details.isAttempted) res.status(400).send("You cannot update these fields under this route")
+        if (details.Hosts || details.roomCode || details.Questions || details.TotalPoints || details.QuestionsCount || details.isAttempted) return res.status(400).json({ errorMessage: "You cannot update any other fields", errorCode: 400 })
 
-    const response = await Quiz.findByIdAndUpdate(quizId, details, { new: true })
-    if (!response) return res.status(404).send(`QuizId ${quizId} not found!`)
+        const quiz = await Quiz.findById(quizId)
+        if (!quiz) return res.status(404).json({ errorMessage: `QuizId not found!`, errorCode: 404 })
 
-    return res.status(200).json({ message: "Fields Updated successfullt", data: response })
+        const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
+        if (!val) return res.status(401).json({ errorMessage: "You are not authorised to update this quiz", errorCode: 401 })
+
+        const response = await Quiz.findByIdAndUpdate(quizId, details, { new: true })
+
+        return res.status(200).json({ message: "Fields Updated successfullt", data: response })
+    }
+    catch (error) {
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+    }
 }
 
 export const addQuestions = async (req, res) => {
@@ -108,7 +121,7 @@ export const addQuestions = async (req, res) => {
         const { questions } = req.body
 
         const quiz = await Quiz.findById(quizId)
-        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
+        if (!quiz) return res.status(404).json({ errorMessage: "QuizId not found!", errorCode: 404 })
 
         for (let i = 0; i < questions.length; i++) {
             const { point, time, question, options, correctOption } = questions[i]
@@ -117,15 +130,17 @@ export const addQuestions = async (req, res) => {
             if (time) questions[i].time = Number(time)
             if (correctOption) questions[i].correctOption = Number(correctOption)
 
-            if (!questions[i].point) return res.status(400).json({ message: `Point is missing for question ${i + 1}` })
+            if (!questions[i].point) return res.status(400).json({ errorMessage: `Point is missing for question ${i + 1}`, errorCode: 400 })
 
-            if (!question) return res.status(400).json({ message: `Question text is missing for question ${i + 1}` })
+            if (!question) return res.status(400).json({ errorMessage: `Question text is missing for question ${i + 1}`, errorCode: 400 })
 
-            if (!options || !Array.isArray(options)) return res.status(400).json({ message: `Options are missing for question ${i + 1}` })
+            if (!options || !Array.isArray(options)) return res.status(400).json({ errorMessage: `Options are missing for question ${i + 1}`, errorCode: 400 })
 
-            if (options.length < 2 || options.length > 5) return res.status(400).json({ message: `Options must be between 2 and 5 for question ${i + 1}` })
+            if (options.length < 2 || options.length > 5) return res.status(400).json({ errorMessage: `Options must be between 2 and 5 for question ${i + 1}`, errorCode: 400 })
 
-            if (questions[i].correctOption === undefined || questions[i].correctOption === null) return res.status(400).json({ message: `Correct option is missing for question ${i + 1}` })
+            if (questions[i].correctOption === undefined || questions[i].correctOption === null) return res.status(400).json({ errorMessage: `Correct option is missing for question ${i + 1}`, errorCode: 400 })
+
+            if (typeof questions[i].correctOption !== "number") return res.status(400).json({ errorMessage: `Correct option must be the index number of the options array only for question ${i + 1}`, errorCode: 400 })
         }
 
         const data = await Question.insertMany(questions) as any[]
@@ -148,8 +163,8 @@ export const removeQuestions = async (req, res) => {
         const { questionIds } = req.body             // should be an array only, from the frontend
 
         const quiz = await Quiz.findById(quizId)
-        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
-        if (!questionIds || !Array.isArray(questionIds)) return res.status(400).send(`Question id/s are either not present or is not present as an array`)
+        if (!quiz) return res.status(404).json({ errorMessage: "QuizId not found!", errorCode: 404 })
+        if (!questionIds || !Array.isArray(questionIds)) return res.status(400).json({ errorMessage: "Question id/s are either not present or is not present as an array", errorCode: 400 })
 
         const response = await Question.deleteMany({ _id: { $in: questionIds } });
 
@@ -163,39 +178,43 @@ export const removeQuestions = async (req, res) => {
 }
 
 export const updateQuestions = async (req, res) => {
-    const { quizId } = req.params
-    const { questions } = req.body          // We also need to pass each question's (to be updated) _id from the frontend to update the value
+    try {
+        const { quizId } = req.params
+        const { questions } = req.body          // We also need to pass each question's (to be updated) _id from the frontend to update the value
 
-    const quiz = await Quiz.findById(quizId)
-    if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
+        const quiz = await Quiz.findById(quizId)
+        if (!quiz) return res.status(404).json({ errorMessage: "QuizId not found!", errorCode: 404 })
 
-    for (let i = 0; i < questions.length; i++) {
-        const { point, time, question, options, correctOption } = questions[i]
+        for (let i = 0; i < questions.length; i++) {
+            const { point, time, question, options, correctOption } = questions[i]
 
-        if (point) questions[i].point = Number(point)
-        if (time) questions[i].time = Number(time)
-        if (correctOption) questions[i].correctOption = Number(correctOption)
+            if (point) questions[i].point = Number(point)
+            if (time) questions[i].time = Number(time)
+            if (correctOption) questions[i].correctOption = Number(correctOption)
 
-        // For this part, we dont need any validation that which field is present which is not, simply in our findByIdAndUpdate(), those fields that are present will be updated and those which are not will remain untouched. We just need to ensure that the correct datatype of each field is getting inserted (if they are)
+            // For this part, we dont need any validation that which field is present which is not, simply in our findByIdAndUpdate(), those fields that are present will be updated and those which are not will remain untouched. We just need to ensure that the correct datatype of each field is getting inserted (if they are)
+        }
+
+        // Parallel Processing
+        const results = await Promise.all(questions.map(q =>
+            Question.findByIdAndUpdate(q._id, q, { returnDocument: 'after' })
+        ))
+
+        const allQuestions = await Question.find({
+            _id: { $in: quiz.Questions }
+        }).lean()
+
+        let total = 0
+        for (let q of allQuestions) {
+            total += q.point
+        }
+
+        await Quiz.findByIdAndUpdate(quizId, {
+            TotalPoints: total
+        })
+
+        return res.status(200).json({ message: "Fields updated successfully!", data: results })
+    } catch (error) {
+        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
-
-    // Parallel Processing
-    const results = await Promise.all(questions.map(q =>
-        Question.findByIdAndUpdate(q._id, q, { returnDocument: 'after' })
-    ))
-
-    const allQuestions = await Question.find({
-        _id: { $in: quiz.Questions }
-    }).lean()
-
-    let total = 0
-    for (let q of allQuestions) {
-        total += q.point
-    }
-
-    await Quiz.findByIdAndUpdate(quizId, {
-        TotalPoints: total
-    })
-
-    return res.status(200).json({ message: "Fields updated successfully!", data: results })
 }
