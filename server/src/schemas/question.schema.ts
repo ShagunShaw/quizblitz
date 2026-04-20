@@ -1,10 +1,6 @@
 import mongoose from 'mongoose'
 
 const questionSchema = new mongoose.Schema({
-    point: {
-        type: Number,
-        required: true
-    },
     time: {         // In seconds only
         type: Number,
         default: 30

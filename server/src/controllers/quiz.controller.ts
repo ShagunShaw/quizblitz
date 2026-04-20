@@ -40,7 +40,7 @@ export const getAllQuiz = async (req, res) => {
     try {
         const payload = req.user
 
-        const quizes = await Quiz.find({ 'Hosts.userId': payload.userId }).select("roomCode Title Description TotalPoints QuestionsCount startTime")
+        const quizes = await Quiz.find({ 'Hosts.userId': payload.userId }).select("roomCode Title Description QuestionsCount startTime")
 
         return res.status(200)
             .json({ message: "Quizes fetched successfully", data: quizes })
@@ -105,7 +105,7 @@ export const updateQuizById = async (req, res) => {
         const details = req.body
         const payload = req.user
 
-        if (details.Hosts || details.roomCode || details.Questions || details.TotalPoints || details.QuestionsCount || details.isAttempted) return res.status(400).json({ errorMessage: "You cannot update any other fields", errorCode: 400 })
+        if (details.Hosts || details.roomCode || details.Questions || details.QuestionsCount || details.isAttempted) return res.status(400).json({ errorMessage: "You cannot update any other fields", errorCode: 400 })
 
         const quiz = await Quiz.findById(quizId)
         if (!quiz) return res.status(404).json({ errorMessage: `QuizId not found!`, errorCode: 404 })
@@ -131,13 +131,10 @@ export const addQuestions = async (req, res) => {
         if (!quiz) return res.status(404).json({ errorMessage: "QuizId not found!", errorCode: 404 })
 
         for (let i = 0; i < questions.length; i++) {
-            const { point, time, question, options, correctOption } = questions[i]
+            const { time, question, options, correctOption } = questions[i]
 
-            if (point) questions[i].point = Number(point)
             if (time) questions[i].time = Number(time)
             if (correctOption) questions[i].correctOption = Number(correctOption)
-
-            if (!questions[i].point) return res.status(400).json({ errorMessage: `Point is missing for question ${i + 1}`, errorCode: 400 })
 
             if (!question) return res.status(400).json({ errorMessage: `Question text is missing for question ${i + 1}`, errorCode: 400 })
 
@@ -193,9 +190,8 @@ export const updateQuestions = async (req, res) => {
         if (!quiz) return res.status(404).json({ errorMessage: "QuizId not found!", errorCode: 404 })
 
         for (let i = 0; i < questions.length; i++) {
-            const { point, time, question, options, correctOption } = questions[i]
+            const { time, question, options, correctOption } = questions[i]
 
-            if (point) questions[i].point = Number(point)
             if (time) questions[i].time = Number(time)
             if (correctOption) questions[i].correctOption = Number(correctOption)
 
@@ -206,19 +202,6 @@ export const updateQuestions = async (req, res) => {
         const results = await Promise.all(questions.map(q =>
             Question.findByIdAndUpdate(q._id, q, { returnDocument: 'after' })
         ))
-
-        const allQuestions = await Question.find({
-            _id: { $in: quiz.Questions }
-        }).lean()
-
-        let total = 0
-        for (let q of allQuestions) {
-            total += q.point
-        }
-
-        await Quiz.findByIdAndUpdate(quizId, {
-            TotalPoints: total
-        })
 
         return res.status(200).json({ message: "Fields updated successfully!", data: results })
     } catch (error) {
@@ -231,7 +214,7 @@ export const getQuizByRoomCode = async (req, res) => {
         const { roomCode } = req.params
 
         const quiz = await Quiz.findOne({ roomCode: roomCode })
-            .select("Hosts roomCode Title Description TotalPoints QuestionsCount startTime")
+            .select("Hosts roomCode Title Description QuestionsCount startTime")
             .populate("Hosts")
 
         if (!quiz) return res.status(404).json({ errorCode: 404, errorMessage: "No room with this room code found!" })

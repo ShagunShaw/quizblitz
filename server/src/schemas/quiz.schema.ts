@@ -36,9 +36,6 @@ const quizSchema = new mongoose.Schema({
         type: String,
         maxlength: 150
     },
-    TotalPoints: {
-        type: Number,
-    },
     QuestionsCount: {
         type: Number,
     },
@@ -56,23 +53,9 @@ const quizSchema = new mongoose.Schema({
     }
 }, { timestamps: true })
 
-interface IQuestion {
-    point: number
-}
-
 quizSchema.pre('save', async function () {
     if (this.isModified('Questions')) {
         this.QuestionsCount = this.Questions.length;
-
-        const questions = await mongoose.model('Question').find({
-            _id: { $in: this.Questions }
-        }).lean<IQuestion[]>()
-
-        let points = 0;
-        for (let i = 0; i < questions.length; i++) {
-            points += questions[i].point
-        }
-        this.TotalPoints = points
     }
 })
 
