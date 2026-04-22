@@ -24,7 +24,7 @@ app.use(cookieParser())
 app.use("/api/v1/", UserRouter)
 app.use("/api/v1/quiz/", QuizRouter)
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`)
 })
 

@@ -77,33 +77,47 @@ const initSocket = (server) => {
                 }
 
                 player.currentPoint = givenMarks + player.currentPoint
+
                 // for updating the top7 and topPoints array
-                if (data.topPoints.length === 7) {
-                    if (player.currentPoint > data.topPoints[6]) {
-                        for (let i = 0; i < data.topPoints.length; i++) {
-                            if (data.topPoints[i] < player.currentPoint) {
-                                data.topPoints.splice(i, 0, player.currentPoint)
-                                data.top7.splice(i, 0, player.username)
-                                break
+                const existingIndex = data.top7.indexOf(player.username)
+                if (existingIndex !== -1) {     // (this part I missed)
+                    // player already in top7 — just update their points
+                    data.topPoints[existingIndex] = player.currentPoint
+
+                    // re-sort both arrays together
+                    const combined = data.top7.map((name, i) => ({ name, points: data.topPoints[i] }))
+                    combined.sort((a, b) => b.points - a.points)
+
+                    data.top7 = combined.map(c => c.name)
+                    data.topPoints = combined.map(c => c.points)
+                } else {
+                    if (data.topPoints.length === 7) {
+                        if (player.currentPoint > data.topPoints[6]) {
+                            for (let i = 0; i < data.topPoints.length; i++) {
+                                if (data.topPoints[i] < player.currentPoint) {
+                                    data.topPoints.splice(i, 0, player.currentPoint)
+                                    data.top7.splice(i, 0, player.username)
+                                    break
+                                }
                             }
-                        }
-                        data.top7.pop()
-                        data.topPoints.pop()
-                    }
-                }
-                else {
-                    if (player.currentPoint > data.topPoints[data.topPoints.length - 1]) {
-                        for (let i = 0; i < data.topPoints.length; i++) {
-                            if (data.topPoints[i] < player.currentPoint) {
-                                data.topPoints.splice(i, 0, player.currentPoint)
-                                data.top7.splice(i, 0, player.username)
-                                break
-                            }
+                            data.top7.pop()
+                            data.topPoints.pop()
                         }
                     }
                     else {
-                        data.topPoints.push(player.currentPoint)
-                        data.top7.push(player.username)
+                        if (player.currentPoint > data.topPoints[data.topPoints.length - 1]) {
+                            for (let i = 0; i < data.topPoints.length; i++) {
+                                if (data.topPoints[i] < player.currentPoint) {
+                                    data.topPoints.splice(i, 0, player.currentPoint)
+                                    data.top7.splice(i, 0, player.username)
+                                    break
+                                }
+                            }
+                        }
+                        else {
+                            data.topPoints.push(player.currentPoint)
+                            data.top7.push(player.username)
+                        }
                     }
                 }
             }
@@ -117,8 +131,9 @@ const initSocket = (server) => {
     function calculatePercent(roomCode) {
         const data = quizRooms[roomCode]
 
-        for (let [key, value] of Object.entries(data.currentQuesStats)) {
-            data.currentQuesStats[key] = Math.round(((value as number) / (data.totalSubmission)) * 100)
+        for (let i = 0; i < data.currentQuestion.options.length; i++) {
+            const val = Math.round(((data.currentQuesStats[i.toString()] as number) / (data.totalSubmission)) * 100)
+            data.currentQuesStats[i.toString()] = (data.currentQuesStats[i.toString()]) ? val : 0;
         }
     }
 
@@ -202,10 +217,24 @@ const initSocket = (server) => {
                     calculateResult(roomCode, questionData.correctOption)
                     calculatePercent(roomCode)
                 }
-                const player: Scores = quizRooms[roomCode].scores.find(p => p.id === socket.id)
 
-                // see how we made use of option chaining properly; If player is undefined, doing player.username will throw 'Cannot read properties of undefined' before even reaching the || 'Host' fallback.
-                io.to(roomCode).emit("displayScoreBoard", { username: player?.username || 'Host', userscore: player?.currentPoint ?? NaN, top7: quizRooms[roomCode].top7, topPoints: quizRooms[roomCode].topPoints, optionStats: quizRooms[roomCode].currentQuesStats, correctOption: questionData.correctOption })
+                quizRooms[roomCode].scores.forEach(player => {
+                    io.to(player.id).emit("displayScoreBoard", {
+                        username: player.username,
+                        userscore: player.currentPoint,
+                        top7: quizRooms[roomCode].top7,
+                        topPoints: quizRooms[roomCode].topPoints,
+                        optionStats: quizRooms[roomCode].currentQuesStats,
+                        correctOption: questionData.correctOption
+                    })
+                })
+
+                socket.emit("displayScoreBoard", {
+                    top7: quizRooms[roomCode].top7,
+                    topPoints: quizRooms[roomCode].topPoints,
+                    optionStats: quizRooms[roomCode].currentQuesStats,
+                    correctOption: questionData.correctOption
+                })
             }, (questionData.time + 2) * 1000)
         })
 
@@ -224,22 +253,25 @@ const initSocket = (server) => {
             quizRooms[roomCode].submissions.push(data)
         })
 
-        socket.on("endQuiz", async (roomCode) => {
+        socket.on("endQuiz", async ({ roomCode }) => {
+            if (socket.data.role !== 'host') return { message: "You are not allowed to end the Quiz as you are not the host", data: [] }
+
             const quiz = await Quiz.findOneAndUpdate(
                 { roomCode: roomCode },
                 { $set: { isAttempted: true } },
                 { returnDocument: "after" }
             );
 
-            delete quizRooms[roomCode]
-
             io.to(roomCode).emit("quizEnded", {
                 finalTop7: quizRooms[roomCode].top7,
                 finalTopPoints: quizRooms[roomCode].topPoints
             })
+
+            delete quizRooms[roomCode]
         })
 
         socket.on("disconnect", () => {
+            console.log("user disconnected", socket.id)     // remove this later
             const roomCode = socket.data.roomCode
             if (!roomCode || !quizRooms[roomCode]) return
 

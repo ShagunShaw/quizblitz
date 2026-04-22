@@ -2,9 +2,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { Quiz } from "../schemas/quiz.schema.ts";
 import { Question } from '../schemas/question.schema.ts';
 
-import { getIO } from '../socket.ts';
-const io = getIO()
-
 
 export const addQuiz = async (req, res) => {
     try {
@@ -209,6 +206,7 @@ export const updateQuestions = async (req, res) => {
     }
 }
 
+// need to fix this later according to the use case on frontend
 export const getQuizByRoomCode = async (req, res) => {
     try {
         const { roomCode } = req.params
