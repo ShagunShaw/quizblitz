@@ -40,13 +40,13 @@ const initSocket = (server) => {
                 // how this will handle millions of users in such a case, where it can to scan everytime for a new id?
                 const player: Scores = data.scores.find(p => p.id === val.id)
 
-                if (val.submittedOption) {
-                    stats[val.submittedOption] = (!stats[val.submittedOption]) ? 1 : (stats[val.submittedOption] + 1)
+                if (val.submittedOption !== null && val.submittedOption !== undefined) {
+                    stats[val.submittedOption] = (stats[val.submittedOption] !== undefined) ? stats[val.submittedOption] + 1 : 1
                     data.totalSubmission += 1
                 }
 
                 // give marks to each user accordingly
-                if (val.submittedOption && val.submittedOption === correctOption) {
+                if ((val.submittedOption !== null && val.submittedOption !== undefined) && val.submittedOption === correctOption) {
                     if (val.isAutoSubmit) {
                         givenMarks = 1
                         if (player) player.streak = 0
@@ -271,12 +271,11 @@ const initSocket = (server) => {
         })
 
         socket.on("disconnect", () => {
-            console.log("user disconnected", socket.id)     // remove this later
             const roomCode = socket.data.roomCode
             if (!roomCode || !quizRooms[roomCode]) return
 
             quizRooms[roomCode].scores = quizRooms[roomCode].scores.filter(p => p.id !== socket.id)
-            console.log("user disconnected", socket.id)
+            console.log("a user disconnected", socket.id)
         })
     })
 }
