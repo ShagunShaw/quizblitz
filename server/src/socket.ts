@@ -1,11 +1,13 @@
 import { Server } from "socket.io"
 import { Quiz } from "./schemas/quiz.schema.ts";
+import logger from "./logger.ts";
 
 interface QuestionData {
     time: number,
-    question: String,
-    options: [String],
-    correctOption: number
+    question: string,
+    options: [string],
+    correctOption: number,
+    questionNo: number
 }
 
 interface Submissions {
@@ -76,6 +78,16 @@ const initSocket = (server) => {
                     if (player) player.streak = 0
                 }
 
+                logger.info("Individual Marks", {
+                    roomCode: roomCode,
+                    username: player.username,
+                    previousPoints: player.currentPoint,
+                    givenPoints: givenMarks,
+                    updatedPoints: (givenMarks + player.currentPoint),
+                    questionNo: data.currentQuestion.questionNo,
+                    timestamp: new Date()
+                })
+
                 player.currentPoint = givenMarks + player.currentPoint
 
                 // for updating the top7 and topPoints array
@@ -124,16 +136,29 @@ const initSocket = (server) => {
 
             data.isResultCalculated = true
         } catch (error) {
-            console.log("Something went wrong: \n", error)
+            // console.log("Something went wrong: \n", error)
+            logger.error("Internal Server Error", {
+                error: error.message,
+                from: 'calculateResult()',
+                timestamp: new Date()
+            })
         }
     }
 
     function calculatePercent(roomCode) {
-        const data = quizRooms[roomCode]
+        try {
+            const data = quizRooms[roomCode]
 
-        for (let i = 0; i < data.currentQuestion.options.length; i++) {
-            const val = Math.round(((data.currentQuesStats[i.toString()] as number) / (data.totalSubmission)) * 100)
-            data.currentQuesStats[i.toString()] = (data.currentQuesStats[i.toString()]) ? val : 0;
+            for (let i = 0; i < data.currentQuestion.options.length; i++) {
+                const val = Math.round(((data.currentQuesStats[i.toString()] as number) / (data.totalSubmission)) * 100)
+                data.currentQuesStats[i.toString()] = (data.currentQuesStats[i.toString()]) ? val : 0;
+            }
+        } catch (error) {
+            logger.error("Internal Server Error", {
+                error: error.message,
+                from: 'calculatePercent()',
+                timestamp: new Date()
+            })
         }
     }
 
@@ -142,8 +167,15 @@ const initSocket = (server) => {
 
         // see if you can make changes that rather attendee count ko baar baar calculate krne k jgh if we can store the value somewhere and increment it by 1 everytime a new attendee joins
         socket.on("attendeeJoinRoom", ({ roomCode, username }) => {
+            logger.info("Attendee Joined", {
+                username: username,
+                roomCode: roomCode,
+                timestamp: new Date()
+            })
+
             socket.join(roomCode)
             socket.data.roomCode = roomCode
+            socket.data.username = username
             socket.data.role = 'attendee'       // socket.data is a built-in Socket.io object — it's basically an empty object attached to every socket connection where you can store anything you want about that specific socket.
 
             const room = io.of("/").adapter.rooms.get(roomCode)
@@ -179,6 +211,11 @@ const initSocket = (server) => {
         })
 
         socket.on("hostJoinRoom", ({ roomCode }) => {
+            logger.info("Host Joined", {
+                roomCode: roomCode,
+                timestamp: new Date()
+            })
+
             socket.join(roomCode)
             socket.data.role = 'host'
             socket.data.roomCode = roomCode
@@ -209,6 +246,11 @@ const initSocket = (server) => {
             quizRooms[roomCode].currentQuesStats = {}
             quizRooms[roomCode].totalSubmission = 0
 
+            logger.info("Question Published", {
+                roomCode: roomCode,
+                questionData: questionData,
+                timestamp: new Date()
+            })
 
             io.to(roomCode).emit("newQuestion", questionData)
 
@@ -227,6 +269,14 @@ const initSocket = (server) => {
                         optionStats: quizRooms[roomCode].currentQuesStats,
                         correctOption: questionData.correctOption
                     })
+                })
+
+                logger.info("Result after Question", {
+                    roomCode: roomCode,
+                    questionNo: questionData.questionNo,
+                    top7: quizRooms[roomCode].top7,
+                    topPoints: quizRooms[roomCode].topPoints,
+                    timestamp: new Date()
                 })
 
                 socket.emit("displayScoreBoard", {
@@ -251,6 +301,16 @@ const initSocket = (server) => {
                 isAutoSubmit: isAutoSubmit as boolean
             }
             quizRooms[roomCode].submissions.push(data)
+
+            logger.info("Answer Submitted", {
+                roomCode: roomCode,
+                username: userName,
+                questionNo: quizRooms[roomCode].currentQuestion.questionNo,
+                correctOption: quizRooms[roomCode].currentQuestion.correctOption,
+                submittedOption: optionIndex,
+                isAutoSubmit: isAutoSubmit,
+                timestamp: new Date()
+            })
         })
 
         socket.on("endQuiz", async ({ roomCode }) => {
@@ -261,10 +321,17 @@ const initSocket = (server) => {
                 { $set: { isAttempted: true } },
                 { returnDocument: "after" }
             );
+            if (!quiz) logger.warn("Quiz not found during endQuiz", { roomCode })
 
             io.to(roomCode).emit("quizEnded", {
                 finalTop7: quizRooms[roomCode].top7,
                 finalTopPoints: quizRooms[roomCode].topPoints
+            })
+
+            logger.info("Final Result", {
+                finalTop7: quizRooms[roomCode].top7,
+                finalTopPoints: quizRooms[roomCode].topPoints,
+                timestamp: new Date()
             })
 
             delete quizRooms[roomCode]
@@ -273,6 +340,12 @@ const initSocket = (server) => {
         socket.on("disconnect", () => {
             const roomCode = socket.data.roomCode
             if (!roomCode || !quizRooms[roomCode]) return
+
+            const User = (socket.data.role == 'attendee') ? "Attendee" : "Host"
+            logger.info(`${User} disconnected`, {
+                username: (socket.data.role == 'attendee') ? socket.data.username : "Host",
+                timestamp: new Date()
+            })
 
             quizRooms[roomCode].scores = quizRooms[roomCode].scores.filter(p => p.id !== socket.id)
             console.log("a user disconnected", socket.id)

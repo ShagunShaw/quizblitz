@@ -23,6 +23,7 @@
     "typescript": "^6.0.2"
   },
   "dependencies": {
+    "@axiomhq/winston": "^1.6.0",
     "axios": "^1.14.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
@@ -33,6 +34,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.5",
     "socket.io": "^4.8.3",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0"
   }
 }
