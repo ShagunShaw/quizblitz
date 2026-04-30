@@ -17,7 +17,10 @@ const server = http.createServer(app)
 await connectDB()
 initSocket(server)
 
-app.use(cors())
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true
+}));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())

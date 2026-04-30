@@ -11,8 +11,6 @@ export const googleRedirect = (req, res) => {
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
 
-    // console.log("Response from /auth/google\n", url)
-
     return res.redirect(url);
 }
 
@@ -58,7 +56,7 @@ export const googleCallback = async (req, res) => {
 
         return res.cookie('accessToken', accessToken)
             .cookie('refreshToken', refreshToken)
-            .redirect('http://localhost:5500/client/success.html');
+            .redirect('http://localhost:5173/dashboard'); // FIXED
     } catch (err) {
         console.error('Google OAuth Error:', err);
         return res.status(500).json({errorMessage: err.message, errorCode: err.Code})
@@ -86,7 +84,7 @@ export const logOutUser = async (req, res) => {
 
         return res.clearCookie('accessToken')
             .clearCookie('refreshToken')
-            .status(200).json({message: "User logged out successfully", data: []}).redirect("http://localhost:5500/client/logout.html")
+            .status(200).json({message: "User logged out successfully", data: []}).redirect("http://localhost:5173/") // FIXED
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -116,7 +114,8 @@ export const sendEmail = async (req, res) => {
         type JwtExpiry = `${number}d` | `${number}h` | `${number}m` | `${number}s`
         const payload = { quizId, coHostEmail, role: 'cohost' }
         const token = jwt.sign(payload, process.env.COHOST_TOKEN_SECRET, { expiresIn: process.env.COHOST_TOKEN_EXPIRY as JwtExpiry, algorithm: 'HS256' })
-        const acceptUrl = `http://localhost:5500/client/acceptInvite.html?token=${token}`         // Update this with your react route later
+        
+        const acceptUrl = `http://localhost:5173/accept/${token}` // FIXED
 
         if (!coHost) {
             sendNewUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
@@ -137,16 +136,15 @@ export const sendEmail = async (req, res) => {
     }
 }
 
-export const acceptEmail = async (req, res) => {
+export const acceptEmail = (req, res) => {
     const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const { token } = req.params
 
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${token}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;          // 'state=${token}' is where we are passing our token to be extracted in the callback route using 'req.query.state'
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${token}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
 
     return res.redirect(url);
 }
-
 
 interface IInvitePayload {
     quizId: string
@@ -207,7 +205,7 @@ export const acceptCallback = async (req, res) => {
         return res.cookie('accessToken', accessToken)
             .cookie('refreshToken', refreshToken)
             .status(200)
-            .redirect('http://localhost:5500/client/quizDashboard.html')
+            .redirect('http://localhost:5173/dashboard') // FIXED
     } catch (error) {
         console.error('Co-Host OAuth Error:', error);
         return res.json({ errorCode: error.code, errorMessage: error.message })
