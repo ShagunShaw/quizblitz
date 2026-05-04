@@ -89,7 +89,11 @@ export const verifyRefreshToken = async (req, res, next) => {
     }
 
     // ✅ FIXED (res.cookie, not req.cookie)
-    res.cookie('accessToken', newAccessToken)
+    res.cookie('accessToken', newAccessToken, {
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: false, // localhost only
+});
 
     return next() // ✅ RETURN
   } catch (err) {
