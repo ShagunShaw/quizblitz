@@ -84,7 +84,7 @@ export const logOutUser = async (req, res) => {
 
         return res.clearCookie('accessToken')
             .clearCookie('refreshToken')
-            .status(200).json({message: "User logged out successfully", data: []}).redirect("http://localhost:5173/") // FIXED
+            .status(200).json({message: "User logged out successfully", data: []})
     } catch (error) {
         return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
     }
@@ -184,6 +184,8 @@ export const acceptCallback = async (req, res) => {
         if (payload.coHostEmail !== profileRes.data.email) {
             return res.status(400).json({errorMessage: "You must login with the email to which the invite has been sent!!", errorCode: 400})
         }
+
+        // Add later: check if the co-host has already been added to the quiz or not. If no, proceed further, if yes then return
 
         const user = await User.findOneAndUpdate(
             { email: payload.coHostEmail },
