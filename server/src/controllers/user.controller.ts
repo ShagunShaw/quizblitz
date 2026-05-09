@@ -105,7 +105,7 @@ export const logOutUser = async (req, res) => {
         return res
             .clearCookie('accessToken')
             .clearCookie('refreshToken')
-            .redirect(`${origin}/`);
+            .json({message: "User logged out successfully", data: []})
 
     } catch (error) {
         return res.status(500).json({ errorMessage: error.message });
