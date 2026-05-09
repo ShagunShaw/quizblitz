@@ -59,19 +59,19 @@ export const googleCallback = async (req, res) => {
         const origin = getFrontendOrigin(req);
 
         return res
-  .cookie('accessToken', accessToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: false, // true only in HTTPS
-    path: '/',
-  })
-  .cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: false,
-    path: '/',
-  })
-  .redirect(`${origin}/dashboard`);
+            .cookie('accessToken', accessToken, {
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: false, // true only in HTTPS
+                path: '/',
+            })
+            .cookie('refreshToken', refreshToken, {
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: false,
+                path: '/',
+            })
+            .redirect(`${origin}/dashboard`);
 
     } catch (err) {
         console.error('Google OAuth Error:', err);
@@ -135,7 +135,9 @@ export const sendEmail = async (req, res) => {
         const coHost = await User.findOne({ email: coHostEmail });
 
         const payload = { quizId, coHostEmail, role: 'cohost' };
-        const token = jwt.sign(payload, process.env.COHOST_TOKEN_SECRET, { expiresIn: process.env.COHOST_TOKEN_EXPIRY });
+        const token = jwt.sign(payload, process.env.COHOST_TOKEN_SECRET!, {
+            expiresIn: process.env.COHOST_TOKEN_EXPIRY as jwt.SignOptions['expiresIn']
+        });
 
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
         const acceptUrl = `${frontendUrl}/accept/${token}`;
@@ -163,7 +165,7 @@ export const acceptEmail = (req, res) => {
     const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const { token } = req.params;
- const { origin } = req.query;
+    const { origin } = req.query;
 
     // ✅ pack BOTH token + origin
     const state = JSON.stringify({
@@ -178,7 +180,7 @@ export const acceptEmail = (req, res) => {
 
 export const acceptCallback = async (req, res) => {
     const code = req.query.code;
-   const state = JSON.parse(req.query.state as string);
+    const state = JSON.parse(req.query.state as string);
     const { token, origin } = state;
     const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
 
