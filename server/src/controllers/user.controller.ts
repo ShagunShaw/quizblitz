@@ -1,9 +1,16 @@
 import { Quiz } from "../schemas/quiz.schema.ts";
 import { User } from "../schemas/user.schema.ts";
-import { sendNewUser, sendExistingUser } from "../emailService/sendEmail.ts"
-import jwt from 'jsonwebtoken'
-import axios from 'axios'
+import { sendNewUser, sendExistingUser } from "../emailService/sendEmail.ts";
+import jwt from 'jsonwebtoken';
+import axios from 'axios';
 import { generateAccessToken, generateRefreshToken } from "../auth/generateAndVerifyToken.ts";
+
+// ✅ helper for dynamic frontend origin
+const getFrontendOrigin = (req: any) => {
+    return req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5173';
+};
+
+// ---------------- GOOGLE LOGIN ----------------
 
 export const googleRedirect = (req, res) => {
     const redirectUri = 'http://localhost:3000/api/v1/auth/google/callback';
@@ -12,7 +19,7 @@ export const googleRedirect = (req, res) => {
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
 
     return res.redirect(url);
-}
+};
 
 export const googleCallback = async (req, res) => {
     const code = req.query.code;
@@ -36,125 +43,143 @@ export const googleCallback = async (req, res) => {
             }
         );
 
-        console.log('🔗 Google User:', {
-            name: profileRes.data.name,
-            email: profileRes.data.email,
-        });
-
         const user = await User.findOneAndUpdate(
             { email: profileRes.data.email },
             { $setOnInsert: { username: profileRes.data.name, email: profileRes.data.email } },
             { upsert: true, returnDocument: 'after' }
-        )
+        );
 
-        const sessionId = Date.now() + Math.random()
-        const accessToken = generateAccessToken(user._id, profileRes.data.email, sessionId)
-        const refreshToken = generateRefreshToken(user._id)
+        const sessionId = Date.now() + Math.random();
+        const accessToken = generateAccessToken(user._id, profileRes.data.email, sessionId);
+        const refreshToken = generateRefreshToken(user._id);
 
-        user.refreshTokens.push({ sessionId, token: refreshToken })
-        await user.save()
+        user.refreshTokens.push({ sessionId, token: refreshToken });
+        await user.save();
 
-        return res.cookie('accessToken', accessToken)
-            .cookie('refreshToken', refreshToken)
-            .redirect('http://localhost:5173/dashboard'); // FIXED
+        const origin = getFrontendOrigin(req);
+
+        return res
+  .cookie('accessToken', accessToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false, // true only in HTTPS
+    path: '/',
+  })
+  .cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: false,
+    path: '/',
+  })
+  .redirect(`${origin}/dashboard`);
+
     } catch (err) {
         console.error('Google OAuth Error:', err);
-        return res.status(500).json({errorMessage: err.message, errorCode: err.Code})
+        return res.status(500).json({ errorMessage: err.message });
     }
-}
+};
+
+// ---------------- AUTH ----------------
 
 export const getUser = async (req, res) => {
     try {
-        const payload = req.user
-        const user = await User.findById(payload.userId).select("-refreshTokens -createdAt -updatedAt")
+        const payload = req.user;
+        const user = await User.findById(payload.userId).select("-refreshTokens -createdAt -updatedAt");
 
-        return res.status(200).json({ message: "User fetched successfully!", data: user })
+        return res.status(200).json({ message: "User fetched successfully!", data: user });
     } catch (error) {
-        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorMessage: error.message });
     }
-}
+};
 
 export const logOutUser = async (req, res) => {
     try {
         const payload = req.user;
 
-        const user = await User.findById(payload.userId)
-        user.refreshTokens.pull({ sessionId: payload.sessionId })
-        await user.save()
+        const user = await User.findById(payload.userId);
+        user.refreshTokens.pull({ sessionId: payload.sessionId });
+        await user.save();
 
-        return res.clearCookie('accessToken')
+        const origin = getFrontendOrigin(req);
+
+        return res
+            .clearCookie('accessToken')
             .clearCookie('refreshToken')
-            .status(200).json({message: "User logged out successfully", data: []})
+            .redirect(`${origin}/`);
+
     } catch (error) {
-        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorMessage: error.message });
     }
-}
+};
+
+// ---------------- SEND INVITE ----------------
 
 export const sendEmail = async (req, res) => {
     try {
-        const { quizId } = req.params
+        const { quizId } = req.params;
 
-        const quiz = await Quiz.findById(quizId)
-        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`)
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) return res.status(404).send(`QuizId ${quizId} not found!`);
+
         if (quiz.Hosts.length === 3) {
-            return res.status(400).json({errorMessage: "Not more than 3 hosts can be there for a quiz", errorCode: 400})
+            return res.status(400).json({ errorMessage: "Not more than 3 hosts allowed" });
         }
 
-        const val = quiz.Hosts.find(h => h.userId.toString() === req.user.userId.toString())
-        if (!val) return res.status(401).send("You are not a host of this quiz")
-        if (val.role !== 'owner') return res.status(401).send("You are not authorised to add any co-host to this quiz")
+        const val = quiz.Hosts.find(h => h.userId.toString() === req.user.userId.toString());
+        if (!val) return res.status(401).send("You are not a host");
+        if (val.role !== 'owner') return res.status(401).send("Not authorised");
 
-        const user = await User.findById(req.user.userId)
+        const user = await User.findById(req.user.userId);
 
-        const { coHostEmail } = req.body
-        const coHost = await User.findOne({ email: coHostEmail })
+        const { coHostEmail } = req.body;
+        const coHost = await User.findOne({ email: coHostEmail });
 
-        const subject = "You've been invited to co-host a quiz on QuizBlitz!"
+        const payload = { quizId, coHostEmail, role: 'cohost' };
+        const token = jwt.sign(payload, process.env.COHOST_TOKEN_SECRET, { expiresIn: process.env.COHOST_TOKEN_EXPIRY });
 
-        type JwtExpiry = `${number}d` | `${number}h` | `${number}m` | `${number}s`
-        const payload = { quizId, coHostEmail, role: 'cohost' }
-        const token = jwt.sign(payload, process.env.COHOST_TOKEN_SECRET, { expiresIn: process.env.COHOST_TOKEN_EXPIRY as JwtExpiry, algorithm: 'HS256' })
-        
-        const acceptUrl = `http://localhost:5173/accept/${token}` // FIXED
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const acceptUrl = `${frontendUrl}/accept/${token}`;
 
         if (!coHost) {
-            sendNewUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
-        }
-        else {
+            sendNewUser(coHostEmail, "Invite", user.username, quiz.Title, acceptUrl);
+        } else {
             const alreadyHost = quiz.Hosts.some((id) => id.userId.equals(coHost._id));
-
             if (alreadyHost) {
-                return res.status(400).json({errorMessage: "This user is already a co-host for this quiz", errorCode: 400})
+                return res.status(400).json({ errorMessage: "Already co-host" });
             }
-
-            sendExistingUser(coHostEmail, subject, user.username, quiz.Title, acceptUrl)
+            sendExistingUser(coHostEmail, "Invite", user.username, quiz.Title, acceptUrl);
         }
 
-        return res.status(200).json({message: "Email sent successfully!", data: []})
+        return res.status(200).json({ message: "Email sent" });
+
     } catch (error) {
-        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorMessage: error.message });
     }
-}
+};
+
+// ---------------- ACCEPT INVITE ----------------
 
 export const acceptEmail = (req, res) => {
     const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const { token } = req.params
+    const { token } = req.params;
+ const { origin } = req.query;
 
-    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${token}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
+    // ✅ pack BOTH token + origin
+    const state = JSON.stringify({
+        token,
+        origin: origin || process.env.FRONTEND_URL || 'http://localhost:5173'
+    });
+
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${encodeURIComponent(state)}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
 
     return res.redirect(url);
-}
-
-interface IInvitePayload {
-    quizId: string
-    coHostEmail: string
-    role: string
-}
+};
 
 export const acceptCallback = async (req, res) => {
     const code = req.query.code;
-    const token = req.query.state
+   const state = JSON.parse(req.query.state as string);
+    const { token, origin } = state;
     const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
 
     try {
@@ -175,14 +200,10 @@ export const acceptCallback = async (req, res) => {
             }
         );
 
-        console.log('🔗 Google User:', {
-            name: profileRes.data.name,
-            email: profileRes.data.email,
-        });
+        const payload: any = jwt.verify(token, process.env.COHOST_TOKEN_SECRET);
 
-        const payload = jwt.verify(token, process.env.COHOST_TOKEN_SECRET) as IInvitePayload
         if (payload.coHostEmail !== profileRes.data.email) {
-            return res.status(400).json({errorMessage: "You must login with the email to which the invite has been sent!!", errorCode: 400})
+            return res.status(400).json({ errorMessage: "Wrong email used" });
         }
 
         // Add later: check if the co-host has already been added to the quiz or not. If no, proceed further, if yes then return
@@ -191,74 +212,87 @@ export const acceptCallback = async (req, res) => {
             { email: payload.coHostEmail },
             { $setOnInsert: { username: profileRes.data.name, email: profileRes.data.email } },
             { upsert: true, new: true }
-        )
+        );
 
-        const quiz = await Quiz.findById(payload.quizId)
-        quiz.Hosts.push({ userId: user._id, role: 'cohost' })
-        await quiz.save()
+        const quiz = await Quiz.findById(payload.quizId);
+        quiz.Hosts.push({ userId: user._id, role: 'cohost' });
+        await quiz.save();
 
-        const sessionId = Date.now() + Math.random()
-        const accessToken = generateAccessToken(user._id, profileRes.data.email, sessionId)
-        const refreshToken = generateRefreshToken(user._id)
+        const sessionId = Date.now() + Math.random();
+        const accessToken = generateAccessToken(user._id, profileRes.data.email, sessionId);
+        const refreshToken = generateRefreshToken(user._id);
 
-        user.refreshTokens.push({ sessionId, token: refreshToken })
-        await user.save()
+        user.refreshTokens.push({ sessionId, token: refreshToken });
+        await user.save();
 
-        return res.cookie('accessToken', accessToken)
+        const origin = getFrontendOrigin(req);
+
+        return res
+            .cookie('accessToken', accessToken)
             .cookie('refreshToken', refreshToken)
-            .status(200)
-            .redirect('http://localhost:5173/dashboard') // FIXED
+            .redirect(`${origin}/dashboard`);
+
     } catch (error) {
         console.error('Co-Host OAuth Error:', error);
-        return res.json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorMessage: error.message });
     }
-}
+};
+
+// ---------------- REMOVE COHOST ----------------
 
 export const removeCoHost = async (req, res) => {
     try {
-        const { quizId } = req.params
-        const { coHostId } = req.body
-        const payload = req.user
+        const { quizId } = req.params;
+        const { coHostId } = req.body;
+        const payload = req.user;
 
-        const quiz = await Quiz.findById(quizId)
-        if (!quiz) return res.status(404).json({errorMessage: `QuizId not found!`, errorCode: 404})
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) return res.status(404).json({ errorMessage: `Quiz not found` });
 
-        const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
-        if (!val) return res.status(401).json({errorMessage: "You are not a host of this quiz", errorCode: 401})
-        if (val.role !== 'owner') return res.status(401).json({errorMessage: "You are not authorised to remove any co-host from this quiz", errorCode: 401})
+        const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId);
+        if (!val || val.role !== 'owner') {
+            return res.status(401).json({ errorMessage: "Not authorized" });
+        }
 
         await Quiz.findByIdAndUpdate(
             quizId,
             { $pull: { Hosts: { userId: coHostId } } },
             { new: true }
-        )
+        );
 
-        return res.status(200).json({ message: "Co-Host removed successfully", data: [] })
+        return res.status(200).json({ message: "Co-Host removed" });
+
     } catch (error) {
-        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorMessage: error.message });
     }
-}
+};
+
+// ---------------- LEAVE QUIZ ----------------
 
 export const leaveQuiz = async (req, res) => {
     try {
-        const payload = req.user
-        const { quizId } = req.params
+        const payload = req.user;
+        const { quizId } = req.params;
 
-        const quiz = await Quiz.findById(quizId)
-        if (!quiz) return res.status(404).json({errorMessage: `QuizId not found!`, errorCode: 404})
+        const quiz = await Quiz.findById(quizId);
+        if (!quiz) return res.status(404).json({ errorMessage: `Quiz not found` });
 
-        const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId)
-        if (!val) return res.status(401).json({errorMessage: "You are not a host of this quiz", errorCode: 401})
-        if (val.role === 'owner') return res.status(401).json({errorMessage: "You cannot leave this quiz as you are the owner here. Delete this quiz instead!", errorCode: 401})
+        const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId);
+        if (!val) return res.status(401).json({ errorMessage: "Not a host" });
+
+        if (val.role === 'owner') {
+            return res.status(401).json({ errorMessage: "Owner cannot leave" });
+        }
 
         await Quiz.findByIdAndUpdate(
             quizId,
             { $pull: { Hosts: { userId: payload.userId } } },
             { new: true }
-        )
+        );
 
-        return res.status(200).json({ message: `Co-host has left the quiz successfully!`, data: [] })
+        return res.status(200).json({ message: `Left quiz successfully` });
+
     } catch (error) {
-        return res.status(500).json({ errorCode: error.code, errorMessage: error.message })
+        return res.status(500).json({ errorMessage: error.message });
     }
-}
+};
