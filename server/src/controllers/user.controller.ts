@@ -105,7 +105,7 @@ export const logOutUser = async (req, res) => {
         return res
             .clearCookie('accessToken')
             .clearCookie('refreshToken')
-            .json({message: "User logged out successfully", data: []})
+            .json({ message: "User logged out successfully", data: [] })
 
     } catch (error) {
         return res.status(500).json({ errorMessage: error.message });
@@ -245,23 +245,23 @@ export const acceptCallback = async (req, res) => {
 export const removeCoHost = async (req, res) => {
     try {
         const { quizId } = req.params;
-        const { coHostId } = req.body;
+        const { cohostId } = req.body;
         const payload = req.user;
 
         const quiz = await Quiz.findById(quizId);
         if (!quiz) return res.status(404).json({ errorMessage: `Quiz not found` });
-
+        
         const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId);
         if (!val || val.role !== 'owner') {
             return res.status(401).json({ errorMessage: "Not authorized" });
         }
-
+        
         await Quiz.findByIdAndUpdate(
             quizId,
-            { $pull: { Hosts: { userId: coHostId } } },
+            { $pull: { Hosts: { _id: cohostId } } },  // ← _id not userId
             { new: true }
         );
-
+        
         return res.status(200).json({ message: "Co-Host removed" });
 
     } catch (error) {
@@ -298,3 +298,19 @@ export const leaveQuiz = async (req, res) => {
         return res.status(500).json({ errorMessage: error.message });
     }
 };
+
+// isko bahaut jyada secure and perfect ni banaye h abhi just for the use-case now
+export const getAllCoHosts = async (req, res) => {
+    try {
+        const { quizId } = req.params;
+
+        const quiz = await Quiz.findById(quizId).populate('Hosts.userId')
+        if (!quiz) return res.status(404).json({ errorMessage: "Quiz with this id not found!" })
+
+        const coHost = quiz.Hosts.filter((val) => val.role === "cohost")
+
+        return res.status(200).json({ data: coHost, message: "Co-hosts fetched successfully" })
+    } catch (error) {
+        return res.status(500).json({ errorMessage: error.message });
+    }
+}
