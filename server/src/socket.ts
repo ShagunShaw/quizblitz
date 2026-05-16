@@ -278,7 +278,17 @@ const initSocket = (server) => {
                     topPoints: quizRooms[roomCode].topPoints,
                     timestamp: new Date()
                 })
-
+                const leaderboard = quizRooms[roomCode].scores
+                            .map(player => ({
+                                username: player.username,
+                                score: player.currentPoint
+                            }))
+                            .sort((a,b)=>b.score-a.score);
+                        
+                        io.to(roomCode).emit("leaderboardUpdate",{
+                            leaderboard,
+                            totalResponses: quizRooms[roomCode].totalSubmission
+                        });
                 socket.emit("displayScoreBoard", {
                     top7: quizRooms[roomCode].top7,
                     topPoints: quizRooms[roomCode].topPoints,
