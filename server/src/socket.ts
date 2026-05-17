@@ -252,7 +252,12 @@ const initSocket = (server) => {
                 timestamp: new Date()
             })
 
-            io.to(roomCode).emit("newQuestion", questionData)
+            const endsAt = Date.now() + (questionData.time * 1000)
+
+            io.to(roomCode).emit("newQuestion", {
+                ...questionData,
+                endsAt
+            })
 
             quizRooms[roomCode].timer = setTimeout(() => {
                 if (!quizRooms[roomCode].isResultCalculated) {
@@ -267,7 +272,9 @@ const initSocket = (server) => {
                         top7: quizRooms[roomCode].top7,
                         topPoints: quizRooms[roomCode].topPoints,
                         optionStats: quizRooms[roomCode].currentQuesStats,
-                        correctOption: questionData.correctOption
+                        correctOption: questionData.correctOption,
+                        questionNo: questionData.questionNo,
+                        totalQuestions: quizRooms[roomCode].totalQuestions
                     })
                 })
 
@@ -283,7 +290,9 @@ const initSocket = (server) => {
                     top7: quizRooms[roomCode].top7,
                     topPoints: quizRooms[roomCode].topPoints,
                     optionStats: quizRooms[roomCode].currentQuesStats,
-                    correctOption: questionData.correctOption
+                    correctOption: questionData.correctOption,
+                    questionNo: questionData.questionNo,
+                    totalQuestions: quizRooms[roomCode].totalQuestions
                 })
             }, (questionData.time + 2) * 1000)
         })
