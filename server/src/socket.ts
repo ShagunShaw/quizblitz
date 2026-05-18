@@ -260,6 +260,8 @@ const initSocket = (server) => {
             })
 
             quizRooms[roomCode].timer = setTimeout(() => {
+                if (!quizRooms[roomCode]) return;
+
                 if (!quizRooms[roomCode].isResultCalculated) {
                     calculateResult(roomCode, questionData.correctOption)
                     calculatePercent(roomCode)
@@ -342,6 +344,10 @@ const initSocket = (server) => {
                 finalTopPoints: quizRooms[roomCode].topPoints,
                 timestamp: new Date()
             })
+
+            if (quizRooms[roomCode]?.timer) {
+                clearTimeout(quizRooms[roomCode].timer)
+            }
 
             delete quizRooms[roomCode]
         })
