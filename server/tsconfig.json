@@ -9,7 +9,7 @@
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
-    "types": [],
+    "types": ["node"],
     // For nodejs:
     // "lib": ["esnext"],
     // "types": ["node"],
@@ -25,7 +25,6 @@
     // "exactOptionalPropertyTypes": true,
     "strictNullChecks": false,
     "allowImportingTsExtensions": true,
-    "emitDeclarationOnly": true,
 
     // Style Options
     // "noImplicitReturns": true,
