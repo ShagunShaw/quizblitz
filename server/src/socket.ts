@@ -28,7 +28,18 @@ let io;
 const quizRooms = {}
 
 const initSocket = (server) => {
-    io = new Server(server)
+    io = new Server(server, {
+        cors: {
+            origin:
+                process.env.NODE_ENV === "production"
+                    ? process.env.CLIENT_URL
+                    : [
+                        "http://localhost:5173",
+                        "http://localhost:5174",
+                    ],
+            credentials: true,
+        },
+    });
 
     function calculateResult(roomCode, correctOption) {
         try {

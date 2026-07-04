@@ -3,10 +3,12 @@ import { WinstonTransport as AxiomTransport } from '@axiomhq/winston';
 
 const transports = [];
 
-// 1. Always log to Console/File (useful in both Dev and Prod)
-transports.push(
-  new winston.transports.File({ filename: 'combined.log' })
-);
+// 1. Only log to Console/File if in Development
+if (process.env.NODE_ENV === 'development') {
+  transports.push(
+    new winston.transports.File({ filename: 'combined.log' })
+  );
+}
 
 // 2. Only log to Axiom if in Production
 if (process.env.NODE_ENV === 'production') {

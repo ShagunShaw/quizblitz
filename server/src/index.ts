@@ -18,11 +18,13 @@ await connectDB()
 initSocket(server)
 
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "http://localhost:5174"
-  ],
-  credentials: true
+  origin: process.env.NODE_ENV === "production"
+    ? process.env.CLIENT_URL
+    : [
+        "http://localhost:5173",
+        "http://localhost:5174",
+      ],
+  credentials: true,
 }));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
