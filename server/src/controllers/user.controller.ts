@@ -13,7 +13,7 @@ const getFrontendOrigin = (req: any) => {
 // ---------------- GOOGLE LOGIN ----------------
 
 export const googleRedirect = (req, res) => {
-    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/auth/google/callback`:'http://localhost:3000/api/v1/auth/google/callback';
+    const redirectUri = (process.env.NODE_ENV === 'production') ? `${process.env.SERVER_URL}/api/v1/auth/google/callback` : 'http://localhost:3000/api/v1/auth/google/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
@@ -23,7 +23,7 @@ export const googleRedirect = (req, res) => {
 
 export const googleCallback = async (req, res) => {
     const code = req.query.code;
-    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/auth/google/callback`:'http://localhost:3000/api/v1/auth/google/callback';
+    const redirectUri = (process.env.NODE_ENV === 'production') ? `${process.env.SERVER_URL}/api/v1/auth/google/callback` : 'http://localhost:3000/api/v1/auth/google/callback';
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
             client_id: process.env.GOOGLE_CLIENT_ID,
@@ -57,19 +57,16 @@ export const googleCallback = async (req, res) => {
 
         const origin = getFrontendOrigin(req);
 
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            path: "/",
+        };
+
         return res
-            .cookie('accessToken', accessToken, {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: false, // true only in HTTPS
-                path: '/',
-            })
-            .cookie('refreshToken', refreshToken, {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: false,
-                path: '/',
-            })
+            .cookie('accessToken', accessToken, cookieOptions)
+            .cookie('refreshToken', refreshToken, cookieOptions)
             .redirect(`${origin}/dashboard`);
 
     } catch (err) {
@@ -161,7 +158,7 @@ export const sendEmail = async (req, res) => {
 // ---------------- ACCEPT INVITE ----------------
 
 export const acceptEmail = (req, res) => {
-    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/co-host/accept/callback`:'http://localhost:3000/api/v1/co-host/accept/callback';
+    const redirectUri = (process.env.NODE_ENV === 'production') ? `${process.env.SERVER_URL}/api/v1/co-host/accept/callback` : 'http://localhost:3000/api/v1/co-host/accept/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const { token } = req.params;
     const { origin } = req.query;
@@ -181,7 +178,7 @@ export const acceptCallback = async (req, res) => {
     const code = req.query.code;
     const state = JSON.parse(req.query.state as string);
     const { token, origin } = state;
-    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/co-host/accept/callback`:'http://localhost:3000/api/v1/co-host/accept/callback';
+    const redirectUri = (process.env.NODE_ENV === 'production') ? `${process.env.SERVER_URL}/api/v1/co-host/accept/callback` : 'http://localhost:3000/api/v1/co-host/accept/callback';
 
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
@@ -228,9 +225,16 @@ export const acceptCallback = async (req, res) => {
 
         const origin = getFrontendOrigin(req);
 
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            path: "/",
+        };
+
         return res
-            .cookie('accessToken', accessToken)
-            .cookie('refreshToken', refreshToken)
+            .cookie('accessToken', accessToken, cookieOptions)
+            .cookie('refreshToken', refreshToken, cookieOptions)
             .redirect(`${origin}/dashboard`);
 
     } catch (error) {
@@ -249,18 +253,18 @@ export const removeCoHost = async (req, res) => {
 
         const quiz = await Quiz.findById(quizId);
         if (!quiz) return res.status(404).json({ errorMessage: `Quiz not found` });
-        
+
         const val = quiz.Hosts.find(h => h.userId.toString() === payload.userId);
         if (!val || val.role !== 'owner') {
             return res.status(401).json({ errorMessage: "Not authorized" });
         }
-        
+
         await Quiz.findByIdAndUpdate(
             quizId,
             { $pull: { Hosts: { _id: cohostId } } },  // ← _id not userId
             { new: true }
         );
-        
+
         return res.status(200).json({ message: "Co-Host removed" });
 
     } catch (error) {
