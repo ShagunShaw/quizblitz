@@ -112,6 +112,7 @@ export const logOutUser = async (req, res) => {
 
 export const sendEmail = async (req, res) => {
     try {
+        console.log("Reached here 1")
         const { quizId } = req.params;
 
         const quiz = await Quiz.findById(quizId);
@@ -148,6 +149,7 @@ export const sendEmail = async (req, res) => {
             sendExistingUser(coHostEmail, "Invite", user.username, quiz.Title, acceptUrl);
         }
 
+        console.log("reached here 2")
         return res.status(200).json({ message: "Email sent" });
 
     } catch (error) {
