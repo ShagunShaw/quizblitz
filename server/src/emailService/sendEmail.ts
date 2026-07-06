@@ -3,9 +3,9 @@ import { existingUserTemplate } from "./existingUser.ts"
 import { newUserTemplate } from "./newUser.ts" 
 
 const transporter= nodemailer.createTransport({
-    secure: true,
+    secure: false,
     host: "smtp.gmail.com",
-    port: 465,
+    port: 587,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD
