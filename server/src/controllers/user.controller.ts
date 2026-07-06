@@ -7,13 +7,13 @@ import { generateAccessToken, generateRefreshToken } from "../auth/generateAndVe
 
 // ✅ helper for dynamic frontend origin
 const getFrontendOrigin = (req: any) => {
-    return req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:5173';
+    return req.headers.origin || process.env.CLIENT_URL || 'http://localhost:5173';
 };
 
 // ---------------- GOOGLE LOGIN ----------------
 
 export const googleRedirect = (req, res) => {
-    const redirectUri = 'http://localhost:3000/api/v1/auth/google/callback';
+    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/auth/google/callback`:'http://localhost:3000/api/v1/auth/google/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
@@ -23,8 +23,7 @@ export const googleRedirect = (req, res) => {
 
 export const googleCallback = async (req, res) => {
     const code = req.query.code;
-    const redirectUri = 'http://localhost:3000/api/v1/auth/google/callback';
-
+    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/auth/google/callback`:'http://localhost:3000/api/v1/auth/google/callback';
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
             client_id: process.env.GOOGLE_CLIENT_ID,
@@ -139,7 +138,7 @@ export const sendEmail = async (req, res) => {
             expiresIn: process.env.COHOST_TOKEN_EXPIRY as jwt.SignOptions['expiresIn']
         });
 
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const frontendUrl = process.env.CLIENT_URL || 'http://localhost:5173';
         const acceptUrl = `${frontendUrl}/accept/${token}`;
 
         if (!coHost) {
@@ -162,7 +161,7 @@ export const sendEmail = async (req, res) => {
 // ---------------- ACCEPT INVITE ----------------
 
 export const acceptEmail = (req, res) => {
-    const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
+    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/co-host/accept/callback`:'http://localhost:3000/api/v1/co-host/accept/callback';
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const { token } = req.params;
     const { origin } = req.query;
@@ -170,7 +169,7 @@ export const acceptEmail = (req, res) => {
     // ✅ pack BOTH token + origin
     const state = JSON.stringify({
         token,
-        origin: origin || process.env.FRONTEND_URL || 'http://localhost:5173'
+        origin: origin || process.env.CLIENT_URL || 'http://localhost:5173'
     });
 
     const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&state=${encodeURIComponent(state)}&response_type=code&scope=email profile&access_type=offline&prompt=consent`;
@@ -182,7 +181,7 @@ export const acceptCallback = async (req, res) => {
     const code = req.query.code;
     const state = JSON.parse(req.query.state as string);
     const { token, origin } = state;
-    const redirectUri = 'http://localhost:3000/api/v1/co-host/accept/callback';
+    const redirectUri = (process.env.NODE_ENV === 'production')?`${process.env.SERVER_URL}/api/v1/co-host/accept/callback`:'http://localhost:3000/api/v1/co-host/accept/callback';
 
     try {
         const tokenRes = await axios.post('https://oauth2.googleapis.com/token', {
