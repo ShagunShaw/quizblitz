@@ -33,7 +33,6 @@ export const generateRefreshToken = (userId) => {
 // ------------------- VERIFY ACCESS -------------------
 
 export const verifyAccessToken = (req, res, next) => {
-  console.log("verifyAccessToken reached");
   const token =
     req.headers['authorization']?.split(' ')[1] ||
     req.cookies?.accessToken

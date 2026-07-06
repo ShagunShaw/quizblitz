@@ -112,7 +112,6 @@ export const logOutUser = async (req, res) => {
 
 export const sendEmail = async (req, res) => {
     try {
-        console.log("Reached here 1")
         const { quizId } = req.params;
 
         const quiz = await Quiz.findById(quizId);
@@ -140,20 +139,23 @@ export const sendEmail = async (req, res) => {
         const acceptUrl = `${frontendUrl}/accept/${token}`;
 
         if (!coHost) {
-            sendNewUser(coHostEmail, "Invite", user.username, quiz.Title, acceptUrl);
+            await sendNewUser(coHostEmail, "Invite", user.username, quiz.Title, acceptUrl);
         } else {
             const alreadyHost = quiz.Hosts.some((id) => id.userId.equals(coHost._id));
             if (alreadyHost) {
                 return res.status(400).json({ errorMessage: "Already co-host" });
             }
-            sendExistingUser(coHostEmail, "Invite", user.username, quiz.Title, acceptUrl);
+
+            await sendExistingUser(coHostEmail, "Invite", user.username, quiz.Title, acceptUrl);
         }
 
-        console.log("reached here 2")
         return res.status(200).json({ message: "Email sent" });
 
-    } catch (error) {
-        return res.status(500).json({ errorMessage: error.message });
+    } catch (error: any) {
+        console.error(error);
+        return res.status(500).json({
+            errorMessage: error.message || "Failed to send email"
+        });
     }
 };
 
