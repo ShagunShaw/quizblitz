@@ -97,10 +97,16 @@ export const logOutUser = async (req, res) => {
         await user.save();
 
         const origin = getFrontendOrigin(req);
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            path: "/",
+        };
 
         return res
-            .clearCookie('accessToken')
-            .clearCookie('refreshToken')
+            .clearCookie('accessToken', cookieOptions)
+            .clearCookie('refreshToken', cookieOptions)
             .json({ message: "User logged out successfully", data: [] })
 
     } catch (error) {
