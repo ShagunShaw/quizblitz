@@ -1,4 +1,4 @@
-/*   Since sending emails via SMPT protocol is not supported on Render's free tier, so we will be using 'Resend' application to do so as Render's free tier supports it   */ 
+/*   Since sending emails via SMPT protocol is not supported on Render's free tier, so we will be using 'Maileroo' application to do so as Render's free tier supports it   */ 
 
 
 /*
@@ -41,48 +41,49 @@ export { sendNewUser, sendExistingUser }
 
 
 
-import { Resend } from "resend";
-import { existingUserTemplate } from "./existingUser.ts";
-import { newUserTemplate } from "./newUser.ts";
+import { existingUserTemplate } from "./existingUser.ts" 
+import { newUserTemplate } from "./newUser.ts" 
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Helper function to handle the HTTP API request to Maileroo
+async function sendMailerooRequest(to: string, subject: string, htmlContent: string) {
+    try {
+        const response = await fetch("https://api.maileroo.com/v1/e/send", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-API-KEY": process.env.MAILEROO_API_KEY || "" 
+            },
+            body: JSON.stringify({
+                // Replace this with your exact free domain provided by Maileroo (e.g., system@sandbox123.maileroo.org)
+                from: `QuizBlitz <system@${process.env.MAILEROO_DOMAIN_NAME}.maileroo.org>`, 
+                to: to,
+                subject: subject,
+                html: htmlContent
+            })
+        });
 
-async function sendExistingUser(
-  to: string,
-  subject: string,
-  hostName: string,
-  quizTitle: string,
-  acceptUrl: string
-) {
-  const { error } = await resend.emails.send({
-    from: "QuizBlitz <onboarding@resend.dev>",
-    to,
-    subject,
-    html: existingUserTemplate(hostName, quizTitle, acceptUrl),
-  });
+        const data = await response.json();
 
-  if (error) throw error;
-
-  console.log("Email sent!");
+        if (response.ok && data.success) {
+            console.log(`Email sent successfully to ${to}`);
+        } else {
+            console.error("Maileroo API Error:", data);
+            throw new Error(data.message || "Failed to send email via Maileroo");
+        }
+    } catch (error) {
+        console.error("Failed to connect to Maileroo API:", error);
+        throw error;
+    }
 }
 
-async function sendNewUser(
-  to: string,
-  subject: string,
-  hostName: string,
-  quizTitle: string,
-  acceptUrl: string
-) {
-  const { error } = await resend.emails.send({
-    from: "QuizBlitz <onboarding@resend.dev>",
-    to,
-    subject,
-    html: newUserTemplate(hostName, quizTitle, acceptUrl),
-  });
+async function sendExistingUser(to: string, subject: string, hostName: string, quizTitle: string, acceptUrl: string) {
+    const htmlContent = existingUserTemplate(hostName, quizTitle, acceptUrl);
+    await sendMailerooRequest(to, subject, htmlContent);
+}
 
-  if (error) throw error;
-
-  console.log("Email sent!");
+async function sendNewUser(to: string, subject: string, hostName: string, quizTitle: string, acceptUrl: string) {
+    const htmlContent = newUserTemplate(hostName, quizTitle, acceptUrl);
+    await sendMailerooRequest(to, subject, htmlContent);
 }
 
 export { sendNewUser, sendExistingUser }
