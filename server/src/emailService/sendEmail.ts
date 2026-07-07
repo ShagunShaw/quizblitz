@@ -47,15 +47,15 @@ import { newUserTemplate } from "./newUser.ts"
 // Helper function to handle the HTTP API request to Maileroo
 async function sendMailerooRequest(to: string, subject: string, htmlContent: string) {
     try {
-        const response = await fetch("https://api.maileroo.com/v1/e/send", {
+        // Updated URL to point to Maileroo's correct API v2 basic email endpoint
+        const response = await fetch("https://smtp.maileroo.com/api/v2/send/basic", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "X-API-KEY": process.env.MAILEROO_API_KEY || "" 
             },
             body: JSON.stringify({
-                // Replace this with your exact free domain provided by Maileroo (e.g., system@sandbox123.maileroo.org)
-                from: `QuizBlitz <system@${process.env.MAILEROO_DOMAIN_NAME}.maileroo.org>`, 
+                from: `Quiz Blitz <quizblitz@${process.env.MAILEROO_DOMAIN_NAME}.maileroo.org>`, 
                 to: to,
                 subject: subject,
                 html: htmlContent
