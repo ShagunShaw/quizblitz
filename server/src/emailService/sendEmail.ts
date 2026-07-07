@@ -48,7 +48,7 @@ import { newUserTemplate } from "./newUser.ts"
 async function sendMailerooRequest(to: string, subject: string, htmlContent: string) {
     try {
         // Updated URL to point to Maileroo's correct API v2 basic email endpoint
-        const response = await fetch("https://smtp.maileroo.com/api/v2/send/basic", {
+        const response = await fetch("https://smtp.maileroo.com/api/v2/emails", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
