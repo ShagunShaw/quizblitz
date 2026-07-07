@@ -1,4 +1,4 @@
-/*   Since sending emails via SMPT protocol is not supported on Render's free tier, so we will be using 'Maileroo' application to do so as Render's free tier supports it   */ 
+/*   Since sending emails via SMPT protocol is not supported on Render's free tier, so we will be using 'Maileroo' application to do so as Render's free tier supports it   */
 
 
 /*
@@ -41,8 +41,8 @@ export { sendNewUser, sendExistingUser }
 
 
 
-import { existingUserTemplate } from "./existingUser.ts" 
-import { newUserTemplate } from "./newUser.ts" 
+import { existingUserTemplate } from "./existingUser.ts"
+import { newUserTemplate } from "./newUser.ts"
 
 // Helper function to handle the HTTP API request to Maileroo
 async function sendMailerooRequest(to: string, subject: string, htmlContent: string) {
@@ -52,13 +52,20 @@ async function sendMailerooRequest(to: string, subject: string, htmlContent: str
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "X-API-KEY": process.env.MAILEROO_API_KEY || "" 
+                "X-API-KEY": process.env.MAILEROO_API_KEY || ""
             },
             body: JSON.stringify({
-                from: `Quiz Blitz <quizblitz@${process.env.MAILEROO_DOMAIN_NAME}.maileroo.org>`, 
-                to: to,
-                subject: subject,
-                html: htmlContent
+                "from": {
+                    "address": `quizblitz@${process.env.MAILEROO_DOMAIN_NAME}.maileroo.org`,
+                    "display_name": "QuizBlitz"
+                },
+                "to": [
+                    {
+                        "address": to
+                    }
+                ],
+                "subject": subject,
+                "html": htmlContent
             })
         });
 
