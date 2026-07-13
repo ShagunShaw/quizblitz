@@ -3,7 +3,7 @@ import { verifyAccessToken } from "../auth/generateAndVerifyToken.ts";
 import { sendEmail, logOutUser, acceptEmail, googleRedirect, googleCallback, acceptCallback, removeCoHost, leaveQuiz, getUser, getAllCoHosts } from "../controllers/user.controller.ts";
 const router: Router= express.Router()
 
-router.get("/health", (req, res) => res.json({message: "Server is healthy"}))
+router.get("/health", (req, res) => res.json({message: "Server is up and healthy"}))
 
 router.get('/auth/google', googleRedirect);         
 
